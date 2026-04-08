@@ -16,8 +16,9 @@ const FilwordGame = ({ wordsData }) => {
   const [hintCell, setHintCell] = useState(null);
   
   const gridSize = 6;
-  const gridRef = useRef(null); // Сенсорду көзөмөлдөө үчүн керек
+  const gridRef = useRef(null);
 
+  // Жалпы таймер
   useEffect(() => {
     const timer = setInterval(() => {
       setTotalSeconds(prev => prev + 1);
@@ -25,6 +26,7 @@ const FilwordGame = ({ wordsData }) => {
     return () => clearInterval(timer);
   }, []);
 
+  // Бонус берүү логикасы (ар бир 2 мүнөттө 3 сөз тапса +1 жардам)
   useEffect(() => {
     if (totalSeconds > 0 && totalSeconds % 120 === 0) {
       if (wordsInCurrentInterval >= 3) setHintCount(prev => prev + 1);
@@ -32,6 +34,7 @@ const FilwordGame = ({ wordsData }) => {
     }
   }, [totalSeconds, wordsInCurrentInterval]);
 
+  // Жаңы деңгээлди генерациялоо
   const generateLevel = useCallback(() => {
     let newGrid = Array(gridSize).fill(null).map(() => Array(gridSize).fill(null));
     let finalWords = [];
@@ -41,13 +44,21 @@ const FilwordGame = ({ wordsData }) => {
       let nextR = c === gridSize - 1 ? r + 1 : r;
       let nextC = c === gridSize - 1 ? 0 : c + 1;
       if (newGrid[r][c]) return solve(nextR, nextC);
-      const shuffled = [...wordsData].filter(w => w.word.length >= 3 && w.word.length <= 6).sort(() => 0.5 - Math.random()).slice(0, 50);
+
+      const shuffled = [...wordsData]
+        .filter(w => w.word.length >= 3 && w.word.length <= 6)
+        .sort(() => 0.5 - Math.random())
+        .slice(0, 50);
+
       for (let wordObj of shuffled) {
         const word = wordObj.word.toUpperCase().replace(/\s/g, '');
         const paths = findPaths(r, c, word.length, newGrid);
         for (let path of paths) {
           path.forEach((p, i) => newGrid[p.r][p.c] = { char: word[i], word: word });
-          if (solve(nextR, nextC)) { finalWords.push({ word, path }); return true; }
+          if (solve(nextR, nextC)) {
+            finalWords.push({ word, path });
+            return true;
+          }
           path.forEach(p => newGrid[p.r][p.c] = null);
         }
       }
@@ -71,25 +82,32 @@ const FilwordGame = ({ wordsData }) => {
     }
 
     if (solve(0, 0)) {
-      setGrid([...newGrid]); setTargetWords(finalWords); setFoundWords([]); setHintCell(null);
-    } else { generateLevel(); }
-  }, [wordsData]);
+      setGrid([...newGrid]);
+      setTargetWords(finalWords);
+      setFoundWords([]); // Жаңы деңгээлде тизмени тазалоо
+      setHintCell(null);
+    } else {
+      generateLevel();
+    }
+  }, [wordsData, gridSize]);
 
-  useEffect(() => { if (wordsData) generateLevel(); }, [wordsData, level, generateLevel]);
+  useEffect(() => {
+    if (wordsData) generateLevel();
+  }, [wordsData, level, generateLevel]);
 
-  // Басууну баштоо (Чычкан жана Сенсор үчүн)
+  // Басууну баштоо
   const startSelection = (r, c) => {
-    const found = foundWords.some(f => f.cells.some(s => s.r === r && s.c === c));
-    if (found) return;
+    const alreadyFound = foundWords.some(f => f.cells.some(s => s.r === r && s.c === c));
+    if (alreadyFound) return;
     setIsSelecting(true);
     setSelectedCells([{ r, c }]);
   };
 
-  // Сөөмөй же чычкан үстүнөн өткөндө
+  // Кыймыл учурунда (чычкан же сөөмөй)
   const moveSelection = (r, c) => {
     if (!isSelecting) return;
-    const found = foundWords.some(f => f.cells.some(s => s.r === r && s.c === c));
-    if (found) return;
+    const alreadyFound = foundWords.some(f => f.cells.some(s => s.r === r && s.c === c));
+    if (alreadyFound) return;
     if (selectedCells.some(s => s.r === r && s.c === c)) return;
 
     const last = selectedCells[selectedCells.length - 1];
@@ -98,7 +116,7 @@ const FilwordGame = ({ wordsData }) => {
     }
   };
 
-  // Сенсор кыймылын көзөмөлдөө (Мобилдик үчүн өтө маанилүү)
+  // Мобилдик TouchMove логикасы
   const handleTouchMove = (e) => {
     if (!isSelecting) return;
     const touch = e.touches[0];
@@ -110,20 +128,33 @@ const FilwordGame = ({ wordsData }) => {
     }
   };
 
+  // Тандоону аяктоо жана текшерүү
   const endSelection = () => {
     if (!isSelecting) return;
     setIsSelecting(false);
+
     const selectedText = selectedCells.map(cell => grid[cell.r][cell.c].char).join('');
     const reversedText = selectedText.split('').reverse().join('');
-    const match = targetWords.find(t => (t.word === selectedText || t.word === reversedText) && !foundWords.some(f => f.word === t.word));
+    
+    const match = targetWords.find(t => 
+      (t.word === selectedText || t.word === reversedText) && 
+      !foundWords.some(f => f.word === t.word)
+    );
 
     if (match) {
       const color = COLORS[foundWords.length % COLORS.length];
       const newFound = [...foundWords, { word: match.word, cells: [...selectedCells], color }];
+      
       setFoundWords(newFound);
       setScore(prev => prev + (match.word.length * 10));
       setWordsInCurrentInterval(prev => prev + 1);
-      if (newFound.length === targetWords.length) setTimeout(() => setLevel(l => l + 1), 500);
+
+      // БАРДЫК СӨЗ ТАБЫЛСА: Кийинки турга өтүү
+      if (newFound.length === targetWords.length) {
+        setTimeout(() => {
+          setLevel(prev => prev + 1);
+        }, 600);
+      }
     }
     setSelectedCells([]);
   };
@@ -136,39 +167,46 @@ const FilwordGame = ({ wordsData }) => {
       onTouchEnd={endSelection}
       style={{ backgroundColor: '#0f172a', minHeight: '100vh', color: 'white', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '20px', userSelect: 'none', touchAction: 'none' }}
     >
+      {/* Интерфейс */}
       <div style={{ display: 'flex', gap: '15px', marginBottom: '20px' }}>
-        <div style={{ background: '#1e293b', padding: '10px', borderRadius: '10px', border: '1px solid #334155', textAlign: 'center' }}>
+        <div style={{ background: '#1e293b', padding: '10px', borderRadius: '12px', border: '1px solid #334155', textAlign: 'center' }}>
           <div style={{ fontSize: '10px', color: '#94a3b8' }}>УБАКЫТ</div>
-          <div>{formatTime(totalSeconds)}</div>
+          <div style={{ fontWeight: 'bold' }}>{formatTime(totalSeconds)}</div>
         </div>
-        <div style={{ background: '#1e293b', padding: '10px', borderRadius: '10px', border: '1px solid #f59e0b', textAlign: 'center' }}>
+        <div style={{ background: '#1e293b', padding: '10px', borderRadius: '12px', border: '1px solid #f59e0b', textAlign: 'center' }}>
           <div style={{ fontSize: '10px', color: '#94a3b8' }}>БОНУС: {wordsInCurrentInterval}/3</div>
-          <div style={{ color: '#f59e0b' }}>{formatTime(120 - (totalSeconds % 120))}</div>
+          <div style={{ color: '#f59e0b', fontWeight: 'bold' }}>{formatTime(120 - (totalSeconds % 120))}</div>
         </div>
       </div>
 
       <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
-        <div style={{ background: '#1e293b', padding: '10px 20px', borderRadius: '15px', border: '2px solid #38bdf8', color: '#38bdf8', fontWeight: 'bold' }}>🏆 {score}</div>
-        <button onClick={() => {
+        <div style={{ background: '#1e293b', padding: '10px 20px', borderRadius: '15px', border: '2px solid #38bdf8', color: '#38bdf8', fontWeight: 'bold', fontSize: '20px' }}>🏆 {score}</div>
+        <button 
+          onClick={() => {
             if (hintCount <= 0) return;
             const notFound = targetWords.find(t => !foundWords.some(f => f.word === t.word));
             if (notFound) { setHintCell(notFound.path[0]); setHintCount(prev => prev - 1); setTimeout(() => setHintCell(null), 2000); }
-        }} style={{ background: '#8b5cf6', color: 'white', border: 'none', padding: '10px 15px', borderRadius: '15px', cursor: 'pointer' }}>💡 Жардам ({hintCount})</button>
+          }} 
+          style={{ background: '#8b5cf6', color: 'white', border: 'none', padding: '10px 15px', borderRadius: '15px', cursor: 'pointer', fontWeight: 'bold' }}
+        >
+          💡 Жардам ({hintCount})
+        </button>
       </div>
 
+      {/* Оюн талаасы */}
       <div 
         ref={gridRef}
         onTouchMove={handleTouchMove}
         style={{ 
           display: 'grid', 
           gridTemplateColumns: `repeat(${gridSize}, 1fr)`, 
-          gap: '6px', 
+          gap: '8px', 
           width: '95vw', 
-          maxWidth: '350px',
+          maxWidth: '380px',
           background: '#1e293b', 
-          padding: '10px', 
-          borderRadius: '15px',
-          touchAction: 'none' // Телефондо экранды жылдырбайт
+          padding: '12px', 
+          borderRadius: '20px',
+          touchAction: 'none'
         }}
       >
         {grid.map((row, r) => row.map((cell, c) => {
@@ -179,7 +217,7 @@ const FilwordGame = ({ wordsData }) => {
           return (
             <div
               key={`${r}-${c}`}
-              data-r={r} // TouchMove учурунда кайсы уяча экенин билүү үчүн
+              data-r={r}
               data-c={c}
               onMouseDown={() => startSelection(r, c)}
               onMouseEnter={() => moveSelection(r, c)}
@@ -188,7 +226,7 @@ const FilwordGame = ({ wordsData }) => {
                 aspectRatio: '1/1',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 backgroundColor: isSelected ? '#38bdf8' : found ? found.color : isHint ? '#ec4899' : '#334155',
-                borderRadius: '8px', fontSize: '20px', fontWeight: 'bold', transition: '0.1s',
+                borderRadius: '10px', fontSize: '22px', fontWeight: 'bold', transition: '0.1s',
                 opacity: found ? 0.6 : 1,
                 animation: isHint ? 'hintPulse 0.8s infinite' : 'none'
               }}
