@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 
 const COLORS = ['#26a69a', '#d4e157', '#ef5350', '#42a5f5', '#ab47bc', '#ffa726', '#26c6da'];
+// Кыргыз алфавити бош орундарды толтуруу үчүн
+const KYRGYZ_ALPHABET = "АБВГДЕЁЖЗИЙКЛМНОПРСТУҮФХЦЧШЩЪЫЬЭЮЯӨҢ";
 
 const FilwordGame = ({ wordsData }) => {
   const [currentCatIndex, setCurrentCatIndex] = useState(0);
@@ -59,27 +61,39 @@ const FilwordGame = ({ wordsData }) => {
       let res = [];
       const explore = (currR, currC, path, vis) => {
         if (path.length === len) { res.push([...path]); return; }
+        // Г-түрүндө же тик/туура гана жүрүү (диагональ жок)
         const neighbors = [[1,0], [-1,0], [0,1], [0,-1]]
           .map(([dr, dc]) => ({ r: currR + dr, c: currC + dc }))
           .filter(n => n.r >= 0 && n.r < gridSize && n.c >= 0 && n.c < gridSize && !g[n.r][n.c] && !vis.has(`${n.r},${n.c}`));
+        
         for (let n of neighbors) {
-          vis.add(`${n.r},${n.c}`); path.push(n);
+          vis.add(`${n.r},${n.c}`); 
+          path.push(n);
           explore(n.r, n.c, path, vis);
-          path.pop(); vis.delete(`${n.r},${n.c}`);
+          path.pop(); 
+          vis.delete(`${n.r},${n.c}`);
         }
       };
       explore(r, c, [{ r, c }], new Set([`${r},${c}`]));
       return res.sort(() => Math.random() - 0.5).slice(0, 3);
     }
 
-    if (solve(0, 0)) {
-      setGrid([...newGrid]);
-      setTargetWords(finalWords);
-      setFoundWords([]);
-      setShowWinModal(false);
-    } else {
-      generateLevel();
+    solve(0, 0);
+
+    // КРИТИКАЛЫК ОҢДОО: Бош калган клеткаларды толтуруу
+    for (let r = 0; r < gridSize; r++) {
+      for (let c = 0; c < gridSize; c++) {
+        if (!newGrid[r][c]) {
+          const randomChar = KYRGYZ_ALPHABET[Math.floor(Math.random() * KYRGYZ_ALPHABET.length)];
+          newGrid[r][c] = { char: randomChar, word: null, isFiller: true };
+        }
+      }
     }
+
+    setGrid([...newGrid]);
+    setTargetWords(finalWords);
+    setFoundWords([]);
+    setShowWinModal(false);
   }, [currentCatIndex, wordsData]);
 
   useEffect(() => {
@@ -95,8 +109,14 @@ const FilwordGame = ({ wordsData }) => {
   const moveSelection = (r, c) => {
     if (!isSelecting) return;
     if (selectedCells.some(s => s.r === r && s.c === c)) return;
+
     const last = selectedCells[selectedCells.length - 1];
-    if (Math.abs(last.r - r) <= 1 && Math.abs(last.c - c) <= 1) {
+    
+    // КЫЙГАЧТЫ ӨЧҮРҮҮ: Болгону vertical же horizontal (диагональ эмес)
+    const isVertical = last.c === c && Math.abs(last.r - r) === 1;
+    const isHorizontal = last.r === r && Math.abs(last.c - c) === 1;
+
+    if (isVertical || isHorizontal) {
       setSelectedCells(prev => [...prev, { r, c }]);
     }
   };
@@ -114,6 +134,8 @@ const FilwordGame = ({ wordsData }) => {
     if (!isSelecting) return;
     setIsSelecting(false);
     const selectedText = selectedCells.map(cell => grid[cell.r][cell.c].char).join('');
+    
+    // Сөздү текшерүү
     const match = targetWords.find(t => t.word === selectedText && !foundWords.some(f => f.word === t.word));
 
     if (match) {
@@ -143,7 +165,6 @@ const FilwordGame = ({ wordsData }) => {
   return (
     <div onMouseUp={endSelection} onTouchEnd={endSelection} style={styles.container}>
       
-      {/* Header */}
       <div style={styles.header}>
         <h2 style={styles.categoryTitle}>{currentCategory?.category.replace(/_/g, ' ')}</h2>
         <div style={styles.statsRow}>
@@ -174,7 +195,6 @@ const FilwordGame = ({ wordsData }) => {
         </button>
       </div>
 
-      {/* Grid */}
       <div onTouchMove={handleTouchMove} style={styles.grid}>
         {grid.map((row, r) => row.map((cell, c) => {
           const isSel = selectedCells.some(s => s.r === r && s.c === c);
@@ -191,7 +211,7 @@ const FilwordGame = ({ wordsData }) => {
                 ...styles.cell,
                 backgroundColor: isSel ? '#38bdf8' : fnd ? fnd.color : isHnt ? '#ec4899' : '#334155',
                 animation: isHnt ? 'hintPulse 0.8s infinite' : 'none',
-                opacity: fnd ? 0.7 : 1,
+                color: fnd || isSel || isHnt ? 'white' : '#cbd5e1',
                 transform: isSel ? 'scale(1.05)' : 'scale(1)'
               }}
             >
@@ -201,7 +221,6 @@ const FilwordGame = ({ wordsData }) => {
         }))}
       </div>
 
-      {/* Win Modal */}
       {showWinModal && (
         <div style={styles.modalOverlay}>
           <div style={styles.modalContent}>
@@ -223,6 +242,7 @@ const FilwordGame = ({ wordsData }) => {
   );
 };
 
+// Styles ошол эле бойдон калды...
 const styles = {
   container: { backgroundColor: '#0f172a', minHeight: '100vh', color: 'white', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '15px', userSelect: 'none', touchAction: 'none', fontFamily: 'sans-serif' },
   header: { width: '100%', maxWidth: '400px', marginBottom: '15px' },
