@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 
 const COLORS = ['#26a69a', '#d4e157', '#ef5350', '#42a5f5', '#ab47bc', '#ffa726', '#26c6da'];
-// Кыргыз алфавити бош орундарды толтуруу үчүн
 const KYRGYZ_ALPHABET = "АБВГДЕЁЖЗИЙКЛМНОПРСТУҮФХЦЧШЩЪЫЬЭЮЯӨҢ";
 
 const FilwordGame = ({ wordsData }) => {
@@ -41,7 +40,7 @@ const FilwordGame = ({ wordsData }) => {
       let nextC = c === gridSize - 1 ? 0 : c + 1;
       if (newGrid[r][c]) return solve(nextR, nextC);
 
-      const shuffled = [...availableWords].sort(() => Math.random() - 0.5).slice(0, 15);
+      const shuffled = [...availableWords].sort(() => Math.random() - 0.5);
 
       for (let word of shuffled) {
         const paths = findPaths(r, c, word.length, newGrid);
@@ -61,26 +60,22 @@ const FilwordGame = ({ wordsData }) => {
       let res = [];
       const explore = (currR, currC, path, vis) => {
         if (path.length === len) { res.push([...path]); return; }
-        // Г-түрүндө же тик/туура гана жүрүү (диагональ жок)
         const neighbors = [[1,0], [-1,0], [0,1], [0,-1]]
           .map(([dr, dc]) => ({ r: currR + dr, c: currC + dc }))
           .filter(n => n.r >= 0 && n.r < gridSize && n.c >= 0 && n.c < gridSize && !g[n.r][n.c] && !vis.has(`${n.r},${n.c}`));
-        
         for (let n of neighbors) {
-          vis.add(`${n.r},${n.c}`); 
-          path.push(n);
+          vis.add(`${n.r},${n.c}`); path.push(n);
           explore(n.r, n.c, path, vis);
-          path.pop(); 
-          vis.delete(`${n.r},${n.c}`);
+          path.pop(); vis.delete(`${n.r},${n.c}`);
         }
       };
       explore(r, c, [{ r, c }], new Set([`${r},${c}`]));
-      return res.sort(() => Math.random() - 0.5).slice(0, 3);
+      return res.sort(() => Math.random() - 0.5).slice(0, 5);
     }
 
     solve(0, 0);
 
-    // КРИТИКАЛЫК ОҢДОО: Бош калган клеткаларды толтуруу
+    // Бош калган клеткаларды толтуруу
     for (let r = 0; r < gridSize; r++) {
       for (let c = 0; c < gridSize; c++) {
         if (!newGrid[r][c]) {
@@ -101,18 +96,24 @@ const FilwordGame = ({ wordsData }) => {
   }, [generateLevel]);
 
   const startSelection = (r, c) => {
-    if (foundWords.some(f => f.cells.some(s => s.r === r && s.c === c))) return;
+    // Табылган сөздүн үстүнөн баштабоо
+    const isAlreadyFound = foundWords.some(f => f.cells.some(s => s.r === r && s.c === c));
+    if (isAlreadyFound) return;
+
     setIsSelecting(true);
     setSelectedCells([{ r, c }]);
   };
 
   const moveSelection = (r, c) => {
     if (!isSelecting) return;
+    
+    // Эгер бул клетка мурда табылган болсо, тийбейбиз
+    const isAlreadyFound = foundWords.some(f => f.cells.some(s => s.r === r && s.c === c));
+    if (isAlreadyFound) return;
+
     if (selectedCells.some(s => s.r === r && s.c === c)) return;
 
     const last = selectedCells[selectedCells.length - 1];
-    
-    // КЫЙГАЧТЫ ӨЧҮРҮҮ: Болгону vertical же horizontal (диагональ эмес)
     const isVertical = last.c === c && Math.abs(last.r - r) === 1;
     const isHorizontal = last.r === r && Math.abs(last.c - c) === 1;
 
@@ -126,17 +127,22 @@ const FilwordGame = ({ wordsData }) => {
     const touch = e.touches[0];
     const el = document.elementFromPoint(touch.clientX, touch.clientY);
     if (el && el.getAttribute('data-r')) {
-      moveSelection(parseInt(el.getAttribute('data-r')), parseInt(el.getAttribute('data-c')));
+      const r = parseInt(el.getAttribute('data-r'));
+      const c = parseInt(el.getAttribute('data-c'));
+      moveSelection(r, c);
     }
   };
 
   const endSelection = () => {
     if (!isSelecting) return;
     setIsSelecting(false);
+
     const selectedText = selectedCells.map(cell => grid[cell.r][cell.c].char).join('');
-    
-    // Сөздү текшерүү
-    const match = targetWords.find(t => t.word === selectedText && !foundWords.some(f => f.word === t.word));
+    const match = targetWords.find(t => 
+        t.word === selectedText && 
+        !foundWords.some(f => f.word === t.word) &&
+        t.word.length === selectedCells.length
+    );
 
     if (match) {
       const color = COLORS[foundWords.length % COLORS.length];
@@ -145,7 +151,7 @@ const FilwordGame = ({ wordsData }) => {
       setScore(prev => prev + (match.word.length * 10));
 
       if (newFound.length === targetWords.length) {
-        setShowWinModal(true);
+        setTimeout(() => setShowWinModal(true), 500);
       }
     }
     setSelectedCells([]);
@@ -164,7 +170,6 @@ const FilwordGame = ({ wordsData }) => {
 
   return (
     <div onMouseUp={endSelection} onTouchEnd={endSelection} style={styles.container}>
-      
       <div style={styles.header}>
         <h2 style={styles.categoryTitle}>{currentCategory?.category.replace(/_/g, ' ')}</h2>
         <div style={styles.statsRow}>
@@ -210,9 +215,13 @@ const FilwordGame = ({ wordsData }) => {
               style={{
                 ...styles.cell,
                 backgroundColor: isSel ? '#38bdf8' : fnd ? fnd.color : isHnt ? '#ec4899' : '#334155',
+                color: 'white',
                 animation: isHnt ? 'hintPulse 0.8s infinite' : 'none',
-                color: fnd || isSel || isHnt ? 'white' : '#cbd5e1',
-                transform: isSel ? 'scale(1.05)' : 'scale(1)'
+                // Табылган сөздөрдүн үстүнөн кайра басууну өчүрүү
+                pointerEvents: fnd ? 'none' : 'auto',
+                opacity: fnd ? 0.85 : 1,
+                transform: isSel ? 'scale(1.05)' : 'scale(1)',
+                cursor: fnd ? 'default' : 'pointer'
               }}
             >
               {cell?.char}
@@ -242,7 +251,6 @@ const FilwordGame = ({ wordsData }) => {
   );
 };
 
-// Styles ошол эле бойдон калды...
 const styles = {
   container: { backgroundColor: '#0f172a', minHeight: '100vh', color: 'white', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '15px', userSelect: 'none', touchAction: 'none', fontFamily: 'sans-serif' },
   header: { width: '100%', maxWidth: '400px', marginBottom: '15px' },
@@ -251,9 +259,9 @@ const styles = {
   progressContainer: { width: '100%', height: '8px', background: '#334155', borderRadius: '4px', overflow: 'hidden' },
   progressBar: { height: '100%', background: '#10b981', transition: '0.4s ease-out' },
   scoreRow: { display: 'flex', gap: '15px', marginBottom: '20px' },
-  scoreBadge: { background: '#1e293b', padding: '8px 20px', borderRadius: '12px', border: '2px solid #38bdf8', fontSize: '18px', fontWeight: 'bold', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' },
-  hintBtn: { background: '#8b5cf6', border: 'none', color: 'white', padding: '8px 15px', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' },
-  grid: { display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '8px', width: '95vw', maxWidth: '380px', background: '#1e293b', padding: '12px', borderRadius: '20px', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.3)' },
+  scoreBadge: { background: '#1e293b', padding: '8px 20px', borderRadius: '12px', border: '2px solid #38bdf8', fontSize: '18px', fontWeight: 'bold' },
+  hintBtn: { background: '#8b5cf6', border: 'none', color: 'white', padding: '8px 15px', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer' },
+  grid: { display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '8px', width: '95vw', maxWidth: '380px', background: '#1e293b', padding: '12px', borderRadius: '20px' },
   cell: { aspectRatio: '1/1', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '10px', fontSize: '22px', fontWeight: 'bold', transition: '0.15s all ease' },
   modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, backdropFilter: 'blur(4px)' },
   modalContent: { background: '#1e293b', padding: '30px', borderRadius: '24px', textAlign: 'center', border: '2px solid #38bdf8', width: '80%', maxWidth: '300px' },
