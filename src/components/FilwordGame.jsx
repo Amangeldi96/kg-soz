@@ -4,52 +4,49 @@ const COLORS = ['#26a69a', '#d4e157', '#ef5350', '#42a5f5', '#ab47bc', '#ffa726'
 const KYRGYZ_ALPHABET = "АБВГДЕЁЖЗИЙКЛМНОПРСТУҮФХЦЧШЩЪЫЬЭЮЯӨҢ";
 
 const FilwordGame = ({ wordsData }) => {
-  const [currentCatIndex, setCurrentCatIndex] = useState(0);
+  // --- LOCAL STORAGE & STATE ---
+  const [user, setUser] = useState(() => JSON.parse(localStorage.getItem('filword_user')));
+  const [view, setView] = useState('calendar'); // 'calendar' же 'game'
+  const [completedDays, setCompletedDays] = useState(() => JSON.parse(localStorage.getItem('completed_days')) || []);
+  const [score, setScore] = useState(() => parseInt(localStorage.getItem('filword_score')) || 0);
+  
+  // Оюндун ички абалы
   const [grid, setGrid] = useState([]);
   const [selectedCells, setSelectedCells] = useState([]);
   const [foundWords, setFoundWords] = useState([]);
   const [targetWords, setTargetWords] = useState([]);
   const [isSelecting, setIsSelecting] = useState(false);
-  const [score, setScore] = useState(0);
   const [hintCount, setHintCount] = useState(3);
-  const [totalSeconds, setTotalSeconds] = useState(0);
-  const [hintCell, setHintCell] = useState(null);
   const [showWinModal, setShowWinModal] = useState(false);
 
   const gridSize = 6;
-  const currentCategory = wordsData[currentCatIndex];
+  const today = new Date().getDate(); // Бүгүнкү күн (мисалы: 9)
 
+  // Маалыматты сактоо
   useEffect(() => {
-    const timer = setInterval(() => setTotalSeconds(prev => prev + 1), 1000);
-    return () => clearInterval(timer);
-  }, []);
+    localStorage.setItem('filword_score', score);
+    localStorage.setItem('completed_days', JSON.stringify(completedDays));
+  }, [score, completedDays]);
 
-  const generateLevel = useCallback(() => {
-    if (!currentCategory) return;
-
+  // Деңгээл генерациясы (Оюн башталганда гана иштейт)
+  const generateLevel = useCallback((dayIndex) => {
+    // Ар бир күн үчүн ар башка сөздөр (wordsData ичинен рандомдук категория алуу)
+    const category = wordsData[dayIndex % wordsData.length];
     let newGrid = Array(gridSize).fill(null).map(() => Array(gridSize).fill(null));
     let finalWords = [];
-    
-    const availableWords = currentCategory.words
-      .filter(w => w.length >= 3 && w.length <= 6)
-      .map(w => w.toUpperCase());
+    const availableWords = category.words.filter(w => w.length >= 3 && w.length <= 6).map(w => w.toUpperCase());
 
     const solve = (r, c) => {
       if (r === gridSize) return true;
       let nextR = c === gridSize - 1 ? r + 1 : r;
       let nextC = c === gridSize - 1 ? 0 : c + 1;
       if (newGrid[r][c]) return solve(nextR, nextC);
-
       const shuffled = [...availableWords].sort(() => Math.random() - 0.5);
-
       for (let word of shuffled) {
         const paths = findPaths(r, c, word.length, newGrid);
         for (let path of paths) {
           path.forEach((p, i) => newGrid[p.r][p.c] = { char: word[i], word: word });
-          if (solve(nextR, nextC)) {
-            finalWords.push({ word, path });
-            return true;
-          }
+          if (solve(nextR, nextC)) { finalWords.push({ word, path }); return true; }
           path.forEach(p => newGrid[p.r][p.c] = null);
         }
       }
@@ -60,8 +57,7 @@ const FilwordGame = ({ wordsData }) => {
       let res = [];
       const explore = (currR, currC, path, vis) => {
         if (path.length === len) { res.push([...path]); return; }
-        const neighbors = [[1,0], [-1,0], [0,1], [0,-1]]
-          .map(([dr, dc]) => ({ r: currR + dr, c: currC + dc }))
+        const neighbors = [[1,0], [-1,0], [0,1], [0,-1]].map(([dr, dc]) => ({ r: currR + dr, c: currC + dc }))
           .filter(n => n.r >= 0 && n.r < gridSize && n.c >= 0 && n.c < gridSize && !g[n.r][n.c] && !vis.has(`${n.r},${n.c}`));
         for (let n of neighbors) {
           vis.add(`${n.r},${n.c}`); path.push(n);
@@ -74,158 +70,144 @@ const FilwordGame = ({ wordsData }) => {
     }
 
     solve(0, 0);
-
-    // Бош калган клеткаларды толтуруу
     for (let r = 0; r < gridSize; r++) {
       for (let c = 0; c < gridSize; c++) {
         if (!newGrid[r][c]) {
-          const randomChar = KYRGYZ_ALPHABET[Math.floor(Math.random() * KYRGYZ_ALPHABET.length)];
-          newGrid[r][c] = { char: randomChar, word: null, isFiller: true };
+          newGrid[r][c] = { char: KYRGYZ_ALPHABET[Math.floor(Math.random() * KYRGYZ_ALPHABET.length)], isFiller: true };
         }
       }
     }
-
     setGrid([...newGrid]);
     setTargetWords(finalWords);
     setFoundWords([]);
     setShowWinModal(false);
-  }, [currentCatIndex, wordsData]);
+  }, [wordsData]);
 
-  useEffect(() => {
-    generateLevel();
-  }, [generateLevel]);
+  // Оюнду баштоо
+  const startDayGame = (day) => {
+    if (day > today) return; // Келечектеги күндү ойноого болбойт
+    generateLevel(day);
+    setView('game');
+  };
 
+  // Тандоо логикасы (Мурунку оңдоолор менен)
   const startSelection = (r, c) => {
-    // Табылган сөздүн үстүнөн баштабоо
-    const isAlreadyFound = foundWords.some(f => f.cells.some(s => s.r === r && s.c === c));
-    if (isAlreadyFound) return;
-
+    if (foundWords.some(f => f.cells.some(s => s.r === r && s.c === c))) return;
     setIsSelecting(true);
     setSelectedCells([{ r, c }]);
   };
 
   const moveSelection = (r, c) => {
-    if (!isSelecting) return;
-    
-    // Эгер бул клетка мурда табылган болсо, тийбейбиз
-    const isAlreadyFound = foundWords.some(f => f.cells.some(s => s.r === r && s.c === c));
-    if (isAlreadyFound) return;
-
+    if (!isSelecting || foundWords.some(f => f.cells.some(s => s.r === r && s.c === c))) return;
     if (selectedCells.some(s => s.r === r && s.c === c)) return;
-
     const last = selectedCells[selectedCells.length - 1];
-    const isVertical = last.c === c && Math.abs(last.r - r) === 1;
-    const isHorizontal = last.r === r && Math.abs(last.c - c) === 1;
-
-    if (isVertical || isHorizontal) {
+    if ((last.c === c && Math.abs(last.r - r) === 1) || (last.r === r && Math.abs(last.c - c) === 1)) {
       setSelectedCells(prev => [...prev, { r, c }]);
-    }
-  };
-
-  const handleTouchMove = (e) => {
-    if (!isSelecting) return;
-    const touch = e.touches[0];
-    const el = document.elementFromPoint(touch.clientX, touch.clientY);
-    if (el && el.getAttribute('data-r')) {
-      const r = parseInt(el.getAttribute('data-r'));
-      const c = parseInt(el.getAttribute('data-c'));
-      moveSelection(r, c);
     }
   };
 
   const endSelection = () => {
     if (!isSelecting) return;
     setIsSelecting(false);
-
     const selectedText = selectedCells.map(cell => grid[cell.r][cell.c].char).join('');
-    const match = targetWords.find(t => 
-        t.word === selectedText && 
-        !foundWords.some(f => f.word === t.word) &&
-        t.word.length === selectedCells.length
-    );
-
+    const match = targetWords.find(t => t.word === selectedText && !foundWords.some(f => f.word === t.word) && t.word.length === selectedCells.length);
     if (match) {
       const color = COLORS[foundWords.length % COLORS.length];
       const newFound = [...foundWords, { ...match, cells: [...selectedCells], color }];
       setFoundWords(newFound);
       setScore(prev => prev + (match.word.length * 10));
-
       if (newFound.length === targetWords.length) {
+        setCompletedDays(prev => [...new Set([...prev, today])]);
         setTimeout(() => setShowWinModal(true), 500);
       }
     }
     setSelectedCells([]);
   };
 
-  const nextLevel = () => {
-    if (currentCatIndex < wordsData.length - 1) {
-      setCurrentCatIndex(prev => prev + 1);
-    } else {
-      alert("Оюн бүттү! Сиз мыктысыз!");
-    }
-  };
+  // --- UI КОМПОНЕНТТЕРИ ---
 
-  const formatTime = (s) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`;
-  const progress = (foundWords.length / targetWords.length) * 100 || 0;
+  // 1. Кирүү экраны
+  if (!user) {
+    return (
+      <div style={styles.modalOverlay}>
+        <form onSubmit={(e) => {
+          e.preventDefault();
+          const newUser = { name: e.target.name.value, age: e.target.age.value };
+          setUser(newUser);
+          localStorage.setItem('filword_user', JSON.stringify(newUser));
+        }} style={styles.loginForm}>
+          <h2 style={{color: '#38bdf8'}}>Салам! 👋</h2>
+          <input name="name" placeholder="Атыңыз" required style={styles.input} />
+          <input name="age" type="number" placeholder="Жашыңыз" required style={styles.input} />
+          <button type="submit" style={styles.nextBtn}>Кирүү</button>
+        </form>
+      </div>
+    );
+  }
 
+  // 2. Календарь экраны
+  if (view === 'calendar') {
+    return (
+      <div style={styles.container}>
+        <div style={styles.header}>
+            <h3 style={{color: '#38bdf8'}}>{user.name}, кош келиңиз!</h3>
+            <div style={styles.scoreBadge}>Жалпы упай: {score}</div>
+        </div>
+        <h2 style={{margin: '20px 0'}}>Апрель Колендары</h2>
+        <div style={styles.calendarGrid}>
+          {Array.from({ length: 30 }, (_, i) => i + 1).map(day => {
+            const isCompleted = completedDays.includes(day);
+            const isToday = day === today;
+            const isLocked = day > today;
+
+            return (
+              <div 
+                key={day} 
+                onClick={() => !isLocked && startDayGame(day)}
+                style={{
+                  ...styles.calendarDay,
+                  backgroundColor: isCompleted ? '#10b981' : isToday ? '#38bdf8' : isLocked ? '#1e293b' : '#334155',
+                  opacity: isLocked ? 0.5 : 1,
+                  border: isToday ? '2px solid white' : 'none'
+                }}
+              >
+                {day}
+                {isCompleted && <span style={{fontSize: '10px', display: 'block'}}>✔</span>}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  // 3. Оюн экраны
   return (
     <div onMouseUp={endSelection} onTouchEnd={endSelection} style={styles.container}>
       <div style={styles.header}>
-        <h2 style={styles.categoryTitle}>{currentCategory?.category.replace(/_/g, ' ')}</h2>
-        <div style={styles.statsRow}>
-          <span>Деңгээл: {currentCatIndex + 1}</span>
-          <span>Убакыт: {formatTime(totalSeconds)}</span>
-        </div>
-        <div style={styles.progressContainer}>
-          <div style={{ ...styles.progressBar, width: `${progress}%` }} />
-        </div>
-      </div>
-
-      <div style={styles.scoreRow}>
+        <button onClick={() => setView('calendar')} style={styles.backBtn}>⬅ Артка</button>
         <div style={styles.scoreBadge}>🏆 {score}</div>
-        <button 
-          onClick={() => {
-            if (hintCount > 0) {
-              const next = targetWords.find(t => !foundWords.some(f => f.word === t.word));
-              if (next) { 
-                setHintCell(next.path[0]); 
-                setHintCount(c => c - 1); 
-                setTimeout(() => setHintCell(null), 1500); 
-              }
-            }
-          }}
-          style={styles.hintBtn}
-        >
-          💡 Жардам ({hintCount})
-        </button>
       </div>
 
-      <div onTouchMove={handleTouchMove} style={styles.grid}>
+      <div onTouchMove={(e) => {
+        const touch = e.touches[0];
+        const el = document.elementFromPoint(touch.clientX, touch.clientY);
+        if (el && el.getAttribute('data-r')) moveSelection(parseInt(el.getAttribute('data-r')), parseInt(el.getAttribute('data-c')));
+      }} style={styles.grid}>
         {grid.map((row, r) => row.map((cell, c) => {
           const isSel = selectedCells.some(s => s.r === r && s.c === c);
           const fnd = foundWords.find(f => f.cells.some(s => s.r === r && s.c === c));
-          const isHnt = hintCell?.r === r && hintCell?.c === c;
-
           return (
-            <div
-              key={`${r}-${c}`} data-r={r} data-c={c}
+            <div key={`${r}-${c}`} data-r={r} data-c={c}
               onMouseDown={() => startSelection(r, c)}
               onMouseEnter={() => moveSelection(r, c)}
               onTouchStart={(e) => { e.preventDefault(); startSelection(r, c); }}
               style={{
                 ...styles.cell,
-                backgroundColor: isSel ? '#38bdf8' : fnd ? fnd.color : isHnt ? '#ec4899' : '#334155',
-                color: 'white',
-                animation: isHnt ? 'hintPulse 0.8s infinite' : 'none',
-                // Табылган сөздөрдүн үстүнөн кайра басууну өчүрүү
-                pointerEvents: fnd ? 'none' : 'auto',
-                opacity: fnd ? 0.85 : 1,
-                transform: isSel ? 'scale(1.05)' : 'scale(1)',
-                cursor: fnd ? 'default' : 'pointer'
+                backgroundColor: isSel ? '#38bdf8' : fnd ? fnd.color : '#334155',
+                pointerEvents: fnd ? 'none' : 'auto'
               }}
-            >
-              {cell?.char}
-            </div>
+            >{cell?.char}</div>
           );
         }))}
       </div>
@@ -233,39 +215,30 @@ const FilwordGame = ({ wordsData }) => {
       {showWinModal && (
         <div style={styles.modalOverlay}>
           <div style={styles.modalContent}>
-            <h2 style={{ fontSize: '28px', marginBottom: '10px' }}>Укмуш! 🎉</h2>
-            <p style={{ color: '#94a3b8', marginBottom: '20px' }}>Бардык сөздөрдү таптыңыз!</p>
-            <button onClick={nextLevel} style={styles.nextBtn}>Кийинки Деңгээл</button>
+            <h2>Күнүмдүк оюн бүттү! 🎉</h2>
+            <p>Бүгүнкү күндү ийгиликтүү жаптыңыз.</p>
+            <button onClick={() => setView('calendar')} style={styles.nextBtn}>Календарга кайтуу</button>
           </div>
         </div>
       )}
-
-      <style>{`
-        @keyframes hintPulse {
-          0% { transform: scale(1); }
-          50% { transform: scale(1.08); background-color: #f472b6; }
-          100% { transform: scale(1); }
-        }
-      `}</style>
     </div>
   );
 };
 
 const styles = {
-  container: { backgroundColor: '#0f172a', minHeight: '100vh', color: 'white', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '15px', userSelect: 'none', touchAction: 'none', fontFamily: 'sans-serif' },
-  header: { width: '100%', maxWidth: '400px', marginBottom: '15px' },
-  categoryTitle: { textAlign: 'center', color: '#38bdf8', fontSize: '24px', textTransform: 'uppercase', marginBottom: '5px', letterSpacing: '1px' },
-  statsRow: { display: 'flex', justifyContent: 'space-between', fontSize: '14px', color: '#94a3b8', marginBottom: '8px' },
-  progressContainer: { width: '100%', height: '8px', background: '#334155', borderRadius: '4px', overflow: 'hidden' },
-  progressBar: { height: '100%', background: '#10b981', transition: '0.4s ease-out' },
-  scoreRow: { display: 'flex', gap: '15px', marginBottom: '20px' },
-  scoreBadge: { background: '#1e293b', padding: '8px 20px', borderRadius: '12px', border: '2px solid #38bdf8', fontSize: '18px', fontWeight: 'bold' },
-  hintBtn: { background: '#8b5cf6', border: 'none', color: 'white', padding: '8px 15px', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer' },
+  container: { backgroundColor: '#0f172a', minHeight: '100vh', color: 'white', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '20px', fontFamily: 'sans-serif' },
+  header: { width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' },
+  calendarGrid: { display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '10px', width: '100%', maxWidth: '400px' },
+  calendarDay: { aspectRatio: '1/1', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', borderRadius: '12px', fontSize: '18px', fontWeight: 'bold', cursor: 'pointer' },
   grid: { display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '8px', width: '95vw', maxWidth: '380px', background: '#1e293b', padding: '12px', borderRadius: '20px' },
-  cell: { aspectRatio: '1/1', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '10px', fontSize: '22px', fontWeight: 'bold', transition: '0.15s all ease' },
-  modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, backdropFilter: 'blur(4px)' },
-  modalContent: { background: '#1e293b', padding: '30px', borderRadius: '24px', textAlign: 'center', border: '2px solid #38bdf8', width: '80%', maxWidth: '300px' },
-  nextBtn: { background: '#10b981', color: 'white', border: 'none', padding: '12px 25px', borderRadius: '12px', fontWeight: 'bold', fontSize: '16px', cursor: 'pointer', width: '100%' }
+  cell: { aspectRatio: '1/1', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px', fontSize: '20px', fontWeight: 'bold' },
+  loginForm: { background: '#1e293b', padding: '30px', borderRadius: '20px', textAlign: 'center', width: '85%' },
+  input: { width: '100%', padding: '12px', marginBottom: '10px', borderRadius: '8px', border: 'none' },
+  nextBtn: { background: '#10b981', color: 'white', border: 'none', padding: '12px', borderRadius: '8px', width: '100%', fontWeight: 'bold' },
+  scoreBadge: { background: '#1e293b', padding: '8px 15px', borderRadius: '10px', border: '1px solid #38bdf8' },
+  backBtn: { background: 'transparent', border: 'none', color: '#38bdf8', cursor: 'pointer', fontSize: '16px' },
+  modalOverlay: { position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 },
+  modalContent: { background: '#1e293b', padding: '30px', borderRadius: '20px', textAlign: 'center', width: '80%' }
 };
 
 export default FilwordGame;
