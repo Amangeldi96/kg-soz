@@ -1,42 +1,42 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 
-const COLORS = ['#26a69a', '#d4e157', '#ef5350', '#42a5f5', '#ab47bc', '#ffa726', '#26c6da'];
+const COLORS = ['#00f2fe', '#4facfe', '#764ba2', '#667eea', '#f093fb', '#f5576c', '#43e97b'];
 const KYRGYZ_ALPHABET = "АБВГДЕЁЖЗИЙКЛМНОПРСТУҮФХЦЧШЩЪЫЬЭЮЯӨҢ";
 
 const FilwordGame = ({ wordsData }) => {
-  // --- LOCAL STORAGE & STATES ---
+  // --- STATES ---
   const [user, setUser] = useState(() => JSON.parse(localStorage.getItem('filword_user')));
-  const [view, setView] = useState('menu'); // 'menu', 'game', 'calendar'
+  const [view, setView] = useState('menu'); 
   const [currentCatIndex, setCurrentCatIndex] = useState(() => parseInt(localStorage.getItem('filword_level')) || 0);
   const [score, setScore] = useState(() => parseInt(localStorage.getItem('filword_score')) || 0);
   const [completedDays, setCompletedDays] = useState(() => JSON.parse(localStorage.getItem('completed_days')) || []);
   
-  // Оюндун ички абалы
+  // Login State
+  const [loginAge, setLoginAge] = useState(18);
+  const scrollRef = useRef(null);
+
+  // Оюн абалы
   const [grid, setGrid] = useState([]);
   const [selectedCells, setSelectedCells] = useState([]);
   const [foundWords, setFoundWords] = useState([]);
   const [targetWords, setTargetWords] = useState([]);
   const [isSelecting, setIsSelecting] = useState(false);
-  const [hintCount, setHintCount] = useState(3);
-  const [hintCell, setHintCell] = useState(null);
   const [showWinModal, setShowWinModal] = useState(false);
   const [isDaily, setIsDaily] = useState(false);
 
   const gridSize = 6;
   const today = new Date().getDate();
 
-  // Сактоо
   useEffect(() => {
     localStorage.setItem('filword_level', currentCatIndex);
     localStorage.setItem('filword_score', score);
     localStorage.setItem('completed_days', JSON.stringify(completedDays));
   }, [currentCatIndex, score, completedDays]);
 
-  // Деңгээл генерациясы
+  // Генерация логикасы
   const generateLevel = useCallback((index, daily = false) => {
     const category = wordsData[index % wordsData.length];
     if (!category) return;
-
     let newGrid = Array(gridSize).fill(null).map(() => Array(gridSize).fill(null));
     let finalWords = [];
     const availableWords = category.words.filter(w => w.length >= 3 && w.length <= 6).map(w => w.toUpperCase());
@@ -90,7 +90,6 @@ const FilwordGame = ({ wordsData }) => {
     setView('game');
   }, [wordsData]);
 
-  // Оюн логикалары
   const startSelection = (r, c) => {
     if (foundWords.some(f => f.cells.some(s => s.r === r && s.c === c))) return;
     setIsSelecting(true);
@@ -126,52 +125,77 @@ const FilwordGame = ({ wordsData }) => {
 
   // --- UI SCREENS ---
 
+  // 1. КИРҮҮ (Aesthetics Login with Age Picker)
   if (!user) {
+    const ages = Array.from({ length: 86 }, (_, i) => i + 5);
     return (
-      <div style={styles.modalOverlay}>
-        <form onSubmit={(e) => {
-          e.preventDefault();
-          const newUser = { name: e.target.name.value, age: e.target.age.value };
-          setUser(newUser);
-          localStorage.setItem('filword_user', JSON.stringify(newUser));
-        }} style={styles.loginForm}>
-          <h2 style={{color: '#38bdf8'}}>Кош келиңиз!</h2>
-          <input name="name" placeholder="Атыңыз" required style={styles.input} />
-          <input name="age" type="number" placeholder="Жашыңыз" required style={styles.input} />
-          <button type="submit" style={styles.mainBtn}>Кирүү</button>
-        </form>
+      <div style={styles.fullPage}>
+        <div style={styles.glassCard}>
+          <h1 style={styles.neonText}>FILWORD</h1>
+          <p style={{color: '#cbd5e1', marginBottom: '20px'}}>Маалыматыңызды киргизиңиз</p>
+          
+          <form onSubmit={(e) => {
+            e.preventDefault();
+            const newUser = { name: e.target.name.value, age: loginAge };
+            setUser(newUser);
+            localStorage.setItem('filword_user', JSON.stringify(newUser));
+          }}>
+            <input name="name" placeholder="Атыңыз..." required style={styles.glassInput} />
+            
+            <div style={{margin: '20px 0'}}>
+              <label style={styles.label}>Жашыңыз: <span style={styles.ageValue}>{loginAge}</span></label>
+              <div style={styles.agePickerContainer}>
+                {ages.map(a => (
+                  <button key={a} type="button" 
+                    onClick={() => setLoginAge(a)}
+                    style={{
+                      ...styles.ageCircle,
+                      backgroundColor: loginAge === a ? '#00f2fe' : 'rgba(255,255,255,0.1)',
+                      color: loginAge === a ? '#000' : '#fff'
+                    }}>{a}</button>
+                ))}
+              </div>
+            </div>
+            
+            <button type="submit" style={styles.neonButton}>БАШТОО</button>
+          </form>
+        </div>
       </div>
     );
   }
 
-  // 1. БАШКЫ БЕТ (HOME MENU)
+  // 2. БАШКЫ МЕНЮ (Modern Glass Menu)
   if (view === 'menu') {
     return (
-      <div style={styles.container}>
+      <div style={styles.fullPage}>
         <div style={styles.menuHeader}>
-            <div style={styles.userIcon}>{user.name[0].toUpperCase()}</div>
-            <div style={{fontSize: '18px', fontWeight: 'bold'}}>{user.name}</div>
-            <div style={styles.scoreBadgeMenu}>🏆 {score}</div>
+            <div style={styles.profileBadge}>
+                <div style={styles.avatar}>{user.name[0]}</div>
+                <div>
+                    <div style={{fontWeight: 'bold'}}>{user.name}</div>
+                    <div style={{fontSize: '12px', opacity: 0.7}}>{user.age} жаш</div>
+                </div>
+            </div>
+            <div style={styles.scoreGlass}>🏆 {score}</div>
         </div>
 
-        <div style={styles.menuContent}>
-            <div style={styles.levelProgress}>Деңгээл: {currentCatIndex + 1}</div>
-            <button onClick={() => generateLevel(currentCatIndex)} style={styles.mainPlayBtn}>
-                <span style={{fontSize: '40px'}}>▶</span>
-                <div style={{fontWeight: 'bold', fontSize: '20px'}}>БАШТОО</div>
+        <div style={styles.centerContent}>
+            <div style={styles.levelCircle}>
+                <div style={{fontSize: '14px', opacity: 0.8}}>Деңгээл</div>
+                <div style={{fontSize: '48px', fontWeight: '900'}}>{currentCatIndex + 1}</div>
+            </div>
+
+            <button onClick={() => generateLevel(currentCatIndex)} style={styles.playNeonBtn}>
+                ОЙНОО
             </button>
 
-            <div style={styles.menuGrid}>
-                <button onClick={() => setView('calendar')} style={styles.iconBtn}>
-                    <div style={{fontSize: '30px'}}>📅</div>
+            <div style={styles.bottomNav}>
+                <button onClick={() => setView('calendar')} style={styles.navItem}>
+                    <span style={{fontSize: '24px'}}>📅</span>
                     <span>Календарь</span>
                 </button>
-                <button style={styles.iconBtn}>
-                    <div style={{fontSize: '30px'}}>⚙</div>
-                    <span>Түзөтүү</span>
-                </button>
-                <button onClick={() => {localStorage.clear(); window.location.reload();}} style={styles.iconBtn}>
-                    <div style={{fontSize: '30px'}}>🚪</div>
+                <button onClick={() => {localStorage.clear(); window.location.reload();}} style={styles.navItem}>
+                    <span style={{fontSize: '24px'}}>🚪</span>
                     <span>Чыгуу</span>
                 </button>
             </div>
@@ -180,13 +204,14 @@ const FilwordGame = ({ wordsData }) => {
     );
   }
 
-  // 2. КАЛЕНДАРЬ ЭКРАНЫ
+  // 3. КАЛЕНДАРЬ
   if (view === 'calendar') {
     return (
-      <div style={styles.container}>
-        <div style={styles.header}>
-            <button onClick={() => setView('menu')} style={styles.backBtn}>⬅ Артка</button>
-            <h2 style={{fontSize: '18px', color: '#38bdf8'}}>Күнүмдүк Тапшырма</h2>
+      <div style={styles.fullPage}>
+        <div style={styles.headerRow}>
+          <button onClick={() => setView('menu')} style={styles.backIconBtn}>⬅</button>
+          <h2 style={styles.neonTextSmall}>АПРЕЛЬ</h2>
+          <div style={{width: '40px'}} />
         </div>
         <div style={styles.calendarGrid}>
           {Array.from({ length: 30 }, (_, i) => i + 1).map(day => {
@@ -196,14 +221,15 @@ const FilwordGame = ({ wordsData }) => {
             return (
               <div key={day} onClick={() => !isLocked && generateLevel(day + 100, true)}
                 style={{
-                  ...styles.calendarDay,
-                  backgroundColor: isCompleted ? '#10b981' : isToday ? '#38bdf8' : isLocked ? '#1e293b' : '#334155',
-                  opacity: isLocked ? 0.5 : 1,
-                  border: isToday ? '2px solid white' : 'none'
+                  ...styles.calendarCell,
+                  background: isCompleted ? 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)' : isToday ? '#00f2fe' : 'rgba(255,255,255,0.05)',
+                  boxShadow: isToday ? '0 0 15px #00f2fe' : 'none',
+                  opacity: isLocked ? 0.3 : 1,
+                  color: isToday || isCompleted ? '#000' : '#fff'
                 }}
               >
                 {day}
-                {isCompleted && <span style={{fontSize: '10px'}}>✔</span>}
+                {isCompleted && <div style={{fontSize: '10px'}}>✔</div>}
               </div>
             );
           })}
@@ -212,20 +238,20 @@ const FilwordGame = ({ wordsData }) => {
     );
   }
 
-  // 3. ОЮН ЭКРАНЫ
+  // 4. ОЮН ЭКРАНЫ
   return (
-    <div onMouseUp={endSelection} onTouchEnd={endSelection} style={styles.container}>
-      <div style={styles.header}>
-        <button onClick={() => setView('menu')} style={styles.backBtn}>🏠 Меню</button>
-        <div style={styles.categoryTitle}>{wordsData[currentCatIndex % wordsData.length]?.category.replace(/_/g, ' ')}</div>
-        <div style={styles.scoreBadge}>🏆 {score}</div>
+    <div onMouseUp={endSelection} onTouchEnd={endSelection} style={styles.fullPage}>
+      <div style={styles.headerRow}>
+        <button onClick={() => setView('menu')} style={styles.backIconBtn}>🏠</button>
+        <div style={styles.glassTag}>{wordsData[currentCatIndex % wordsData.length]?.category.replace(/_/g, ' ')}</div>
+        <div style={styles.scoreGlass}>🏆 {score}</div>
       </div>
 
       <div onTouchMove={(e) => {
         const touch = e.touches[0];
         const el = document.elementFromPoint(touch.clientX, touch.clientY);
         if (el && el.getAttribute('data-r')) moveSelection(parseInt(el.getAttribute('data-r')), parseInt(el.getAttribute('data-c')));
-      }} style={styles.grid}>
+      }} style={styles.gameGrid}>
         {grid.map((row, r) => row.map((cell, c) => {
           const isSel = selectedCells.some(s => s.r === r && s.c === c);
           const fnd = foundWords.find(f => f.cells.some(s => s.r === r && s.c === c));
@@ -236,8 +262,10 @@ const FilwordGame = ({ wordsData }) => {
               onTouchStart={(e) => { e.preventDefault(); startSelection(r, c); }}
               style={{
                 ...styles.cell,
-                backgroundColor: isSel ? '#38bdf8' : fnd ? fnd.color : '#334155',
-                pointerEvents: fnd ? 'none' : 'auto'
+                background: isSel ? 'rgba(0, 242, 254, 0.8)' : fnd ? fnd.color : 'rgba(255, 255, 255, 0.08)',
+                boxShadow: isSel ? '0 0 15px #00f2fe' : 'none',
+                transform: isSel ? 'scale(1.1)' : 'scale(1)',
+                color: isSel || fnd ? '#000' : '#fff'
               }}
             >{cell?.char}</div>
           );
@@ -245,13 +273,13 @@ const FilwordGame = ({ wordsData }) => {
       </div>
 
       {showWinModal && (
-        <div style={styles.modalOverlay}>
-          <div style={styles.modalContent}>
-            <h2>{isDaily ? "Күн бүттү! 🎉" : "Жеңиш! 🏆"}</h2>
+        <div style={styles.blurOverlay}>
+          <div style={styles.glassCard}>
+            <h2 style={styles.neonText}>УКМУШ! 🎉</h2>
             <button onClick={() => {
                 if(isDaily) { setView('calendar'); } 
                 else { setCurrentCatIndex(prev => prev + 1); generateLevel(currentCatIndex + 1); }
-            }} style={styles.mainPlayBtn}>Улантуу</button>
+            }} style={styles.neonButton}>УЛАНТУУ</button>
           </div>
         </div>
       )}
@@ -260,27 +288,33 @@ const FilwordGame = ({ wordsData }) => {
 };
 
 const styles = {
-  container: { backgroundColor: '#0f172a', minHeight: '100vh', color: 'white', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '20px', fontFamily: 'sans-serif', overflow: 'hidden' },
-  menuHeader: { width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', marginBottom: '40px' },
-  userIcon: { width: '60px', height: '60px', borderRadius: '50%', backgroundColor: '#38bdf8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', fontWeight: 'bold' },
-  scoreBadgeMenu: { backgroundColor: '#1e293b', padding: '5px 15px', borderRadius: '20px', border: '1px solid #fbbf24', color: '#fbbf24' },
-  menuContent: { flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '30px', width: '100%' },
-  levelProgress: { fontSize: '20px', color: '#94a3b8' },
-  mainPlayBtn: { width: '150px', height: '150px', borderRadius: '50%', backgroundColor: '#10b981', border: '8px solid #064e3b', color: 'white', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 20px rgba(16, 185, 129, 0.4)' },
-  menuGrid: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', width: '100%', maxWidth: '350px', marginTop: '40px' },
-  iconBtn: { background: '#1e293b', border: 'none', color: 'white', padding: '15px 5px', borderRadius: '15px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px', fontSize: '12px' },
-  header: { width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' },
-  categoryTitle: { color: '#38bdf8', fontWeight: 'bold', fontSize: '16px' },
-  grid: { display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '6px', width: '95vw', maxWidth: '380px', background: '#1e293b', padding: '10px', borderRadius: '20px' },
-  cell: { aspectRatio: '1/1', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px', fontSize: '18px', fontWeight: 'bold' },
-  calendarGrid: { display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '10px', width: '100%' },
-  calendarDay: { aspectRatio: '1/1', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', borderRadius: '12px', fontWeight: 'bold' },
-  loginForm: { background: '#1e293b', padding: '30px', borderRadius: '25px', textAlign: 'center', width: '85%', border: '1px solid #38bdf8' },
-  input: { width: '100%', padding: '12px', marginBottom: '15px', borderRadius: '12px', border: 'none', fontSize: '16px' },
-  mainBtn: { background: '#38bdf8', color: 'white', border: 'none', padding: '12px', borderRadius: '12px', width: '100%', fontWeight: 'bold' },
-  backBtn: { background: 'transparent', border: 'none', color: '#94a3b8', fontSize: '14px' },
-  modalOverlay: { position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.9)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 },
-  modalContent: { background: '#1e293b', padding: '40px', borderRadius: '25px', textAlign: 'center', width: '80%' }
+  fullPage: { background: 'radial-gradient(circle at top, #1e293b 0%, #0f172a 100%)', minHeight: '100vh', color: 'white', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '20px', fontFamily: '"Segoe UI", Roboto, sans-serif' },
+  glassCard: { background: 'rgba(255, 255, 255, 0.05)', backdropFilter: 'blur(15px)', border: '1px solid rgba(255,255,255,0.1)', padding: '30px', borderRadius: '30px', textAlign: 'center', width: '90%', maxWidth: '380px', boxShadow: '0 20px 50px rgba(0,0,0,0.3)' },
+  neonText: { fontSize: '36px', fontWeight: '900', color: '#00f2fe', textShadow: '0 0 10px #00f2fe', marginBottom: '10px' },
+  neonTextSmall: { fontSize: '20px', fontWeight: 'bold', color: '#00f2fe', textShadow: '0 0 5px #00f2fe' },
+  glassInput: { width: '100%', padding: '15px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '15px', color: 'white', fontSize: '16px', outline: 'none', marginBottom: '15px' },
+  agePickerContainer: { display: 'flex', overflowX: 'auto', gap: '10px', padding: '10px 0', scrollbarWidth: 'none' },
+  ageCircle: { minWidth: '45px', height: '45px', borderRadius: '50%', border: 'none', fontWeight: 'bold', cursor: 'pointer', transition: '0.3s' },
+  ageValue: { color: '#00f2fe', fontWeight: 'bold', fontSize: '20px' },
+  label: { display: 'block', textAlign: 'left', fontSize: '14px', color: '#94a3b8' },
+  neonButton: { width: '100%', padding: '15px', background: '#00f2fe', color: '#000', border: 'none', borderRadius: '15px', fontWeight: '900', fontSize: '18px', cursor: 'pointer', boxShadow: '0 0 20px rgba(0,242,254,0.4)' },
+  menuHeader: { width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px' },
+  profileBadge: { display: 'flex', alignItems: 'center', gap: '12px', background: 'rgba(255,255,255,0.05)', padding: '8px 15px', borderRadius: '20px' },
+  avatar: { width: '40px', height: '40px', borderRadius: '50%', background: 'linear-gradient(45deg, #00f2fe, #4facfe)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', color: '#000' },
+  scoreGlass: { background: 'rgba(255, 255, 255, 0.05)', padding: '8px 15px', borderRadius: '15px', border: '1px solid rgba(255,255,255,0.1)', color: '#fbbf24', fontWeight: 'bold' },
+  centerContent: { flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '40px', width: '100%' },
+  levelCircle: { width: '150px', height: '150px', borderRadius: '50%', border: '4px solid rgba(0,242,254,0.2)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,242,254,0.05)', boxShadow: 'inset 0 0 20px rgba(0,242,254,0.1)' },
+  playNeonBtn: { padding: '15px 60px', borderRadius: '30px', background: '#00f2fe', color: '#000', fontWeight: 'bold', fontSize: '22px', border: 'none', boxShadow: '0 10px 30px rgba(0,242,254,0.3)', cursor: 'pointer' },
+  bottomNav: { display: 'flex', gap: '30px', marginTop: '20px' },
+  navItem: { background: 'none', border: 'none', color: 'white', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px', opacity: 0.8, cursor: 'pointer' },
+  headerRow: { width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' },
+  backIconBtn: { background: 'rgba(255,255,255,0.05)', border: 'none', color: 'white', width: '40px', height: '40px', borderRadius: '12px', fontSize: '18px' },
+  glassTag: { background: 'rgba(0,242,254,0.1)', padding: '5px 15px', borderRadius: '10px', border: '1px solid rgba(0,242,254,0.3)', color: '#00f2fe', fontSize: '14px', fontWeight: 'bold' },
+  gameGrid: { display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '8px', width: '100%', maxWidth: '380px', background: 'rgba(255,255,255,0.03)', padding: '15px', borderRadius: '25px', border: '1px solid rgba(255,255,255,0.05)' },
+  cell: { aspectRatio: '1/1', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '10px', fontSize: '20px', fontWeight: '900', transition: '0.2s' },
+  calendarGrid: { display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '12px', width: '100%' },
+  calendarCell: { aspectRatio: '1/1', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', borderRadius: '15px', fontWeight: 'bold', cursor: 'pointer', transition: '0.3s' },
+  blurOverlay: { position: 'fixed', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.8)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }
 };
 
 export default FilwordGame;
