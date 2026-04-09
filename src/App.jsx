@@ -1,5 +1,6 @@
 import React from 'react';
 import FilwordGame from './components/FilwordGame';
+import './style.css';
 
 // Бардык JSON файлдарды импорттоо
 import adam from './data/adam.json';
