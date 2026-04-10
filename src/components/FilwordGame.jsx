@@ -152,15 +152,15 @@ const FilwordGame = ({ wordsData = [] }) => {
     <div onMouseUp={endSelection} onTouchEnd={endSelection} style={styles.fullPage}>
       <style>{`
         body { overflow: hidden; overscroll-behavior: none; }
-        .navigation { position: fixed; bottom: 20px; width: 90%; max-width: 380px; height: 70px; background: #fff; display: flex; justify-content: center; align-items: center; border-radius: 20px; z-index: 1000; box-shadow: 0 10px 25px rgba(0,0,0,0.5); left: 50%; transform: translateX(-50%); }
-        .navigation ul { display: flex; width: 100%; padding: 0; margin: 0; list-style: none; position: relative; justify-content: space-around; }
-        .navigation ul li { position: relative; width: 70px; height: 70px; z-index: 1; cursor: pointer; }
+        .navigation { position: fixed; bottom: 20px; width: 350px; height: 70px; background: #fff; display: flex; justify-content: center; align-items: center; border-radius: 20px; z-index: 1000; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+        .navigation ul { display: flex; width: 300px; padding: 0; margin: 0; list-style: none; position: relative; }
+        .navigation ul li { position: relative; width: 75px; height: 70px; z-index: 1; cursor: pointer; }
         .navigation ul li a { position: relative; display: flex; justify-content: center; align-items: center; flex-direction: column; width: 100%; text-align: center; }
         .navigation ul li a .icon { position: relative; display: block; line-height: 75px; font-size: 1.5em; transition: 0.5s; color: #222327; }
         .navigation ul li.active a .icon { transform: translateY(-32px); color: #fff; }
         .navigation ul li a .text { position: absolute; color: #222327; font-weight: 500; font-size: 0.75em; letter-spacing: 0.05em; transition: 0.5s; opacity: 0; transform: translateY(20px); }
         .navigation ul li.active a .text { opacity: 1; transform: translateY(10px); }
-        .indicator { position: absolute; top: -50%; width: 70px; height: 70px; background: #29fd53; border-radius: 50%; border: 6px solid #0f172a; transition: 0.5s; left: 0; }
+        .indicator { position: absolute; top: -50%; width: 70px; height: 70px; background: #29fd53; border-radius: 50%; border: 6px solid #0f172a; transition: 0.5s; transform: translateX(calc(75px * ${activeIndex})); }
         .indicator::before { content: ''; position: absolute; top: 50%; left: -22px; width: 20px; height: 20px; background: transparent; border-top-right-radius: 20px; box-shadow: 1px -10px 0 0 #0f172a; }
         .indicator::after { content: ''; position: absolute; top: 50%; right: -22px; width: 20px; height: 20px; background: transparent; border-top-left-radius: 20px; box-shadow: -1px -10px 0 0 #0f172a; }
       `}</style>
@@ -188,23 +188,25 @@ const FilwordGame = ({ wordsData = [] }) => {
                 <div style={styles.glassTag}>{wordsData[currentCatIndex % wordsData.length]?.category.replace(/_/g, ' ')}</div>
                 <div style={styles.glassBadge}>🏆 {score}</div>
             </div>
-            <div onTouchMove={(e) => {
-                const touch = e.touches[0];
-                const el = document.elementFromPoint(touch.clientX, touch.clientY);
+            <div 
+              onPointerMove={(e) => {
+                if (!isSelecting) return;
+                const el = document.elementFromPoint(e.clientX, e.clientY);
                 if (el && el.getAttribute('data-r')) moveSelection(parseInt(el.getAttribute('data-r')), parseInt(el.getAttribute('data-c')));
-            }} style={styles.gameGrid}>
+              }} 
+              style={styles.gameGrid}
+            >
                 {grid.map((row, r) => row.map((cell, c) => {
                     const isSel = selectedCells.some(s => s.r === r && s.c === c);
                     const fnd = foundWords.find(f => f.cells.some(s => s.r === r && s.c === c));
                     return (
                         <div key={`${r}-${c}`} data-r={r} data-c={c}
-                            onMouseDown={() => startSelection(r, c)}
-                            onMouseEnter={() => moveSelection(r, c)}
-                            onTouchStart={(e) => { e.preventDefault(); startSelection(r, c); }}
+                            onPointerDown={(e) => { e.target.releasePointerCapture(e.pointerId); startSelection(r, c); }}
                             style={{
                                 ...styles.cell,
                                 background: isSel ? '#00f2fe' : fnd ? fnd.color : 'rgba(255, 255, 255, 0.05)',
-                                color: isSel || fnd ? '#000' : '#fff'
+                                color: isSel || fnd ? '#000' : '#fff',
+                                touchAction: 'none'
                             }}
                         >{cell?.char}</div>
                     );
@@ -245,7 +247,7 @@ const FilwordGame = ({ wordsData = [] }) => {
       {view !== 'game' && (
         <div className="navigation">
           <ul>
-            {navItems.map((item, idx) => (
+            {navItems.map((item) => (
               <li key={item.id} className={`list ${view === item.id ? 'active' : ''}`} onClick={() => {
                   if(item.id === 'settings') { localStorage.clear(); window.location.reload(); }
                   else setView(item.id);
@@ -256,7 +258,7 @@ const FilwordGame = ({ wordsData = [] }) => {
                 </a>
               </li>
             ))}
-            <div className="indicator" style={{ transform: `translateX(calc(${(activeIndex * (100 / navItems.length))} * 3.8px + ${(activeIndex * 10)}px))` }}></div>
+            <div className="indicator"></div>
           </ul>
         </div>
       )}
@@ -265,23 +267,23 @@ const FilwordGame = ({ wordsData = [] }) => {
 };
 
 const styles = {
-  fullPage: { background: '#0f172a', minHeight: '100dvh', color: 'white', display: 'flex', flexDirection: 'column', alignItems: 'center', fontFamily: 'sans-serif', overflow: 'hidden', position: 'relative' },
-  contentArea: { flex: 1, width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '20px', paddingTop: 'env(safe-area-inset-top)' },
+  fullPage: { background: '#0f172a', minHeight: '100vh', color: 'white', display: 'flex', flexDirection: 'column', alignItems: 'center', fontFamily: 'sans-serif', overflow: 'hidden' },
+  contentArea: { flex: 1, width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '20px' },
   menuInner: { width: '100%', textAlign: 'center', marginTop: '40px' },
-  levelCard: { background: 'rgba(255,255,255,0.03)', padding: '40px 20px', borderRadius: '40px', marginBottom: '30px', border: '1px solid rgba(255,255,255,0.05)', width: '90%', maxWidth: '350px', margin: '0 auto 30px' },
+  levelCard: { background: 'rgba(255,255,255,0.03)', padding: '40px 20px', borderRadius: '40px', marginBottom: '30px', border: '1px solid rgba(255,255,255,0.05)' },
   progressBar: { width: '80%', height: '10px', background: 'rgba(255,255,255,0.1)', borderRadius: '10px', margin: '20px auto 0' },
   progressFill: { height: '100%', background: '#4ade80', borderRadius: '10px' },
-  playBtnLarge: { width: '200px', height: '60px', borderRadius: '30px', background: '#4ade80', border: 'none', color: 'white', fontSize: '20px', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 5px 15px rgba(0,0,0,0.3)' },
+  playBtnLarge: { width: '200px', height: '60px', borderRadius: '30px', background: '#4ade80', border: 'none', color: 'white', fontSize: '20px', fontWeight: 'bold', cursor: 'pointer' },
   scoreRow: { display: 'flex', gap: '15px', marginTop: '30px', justifyContent: 'center' },
   glassBadge: { background: 'rgba(255,255,255,0.05)', padding: '10px 20px', borderRadius: '15px', border: '1px solid rgba(255,255,255,0.1)', fontWeight: 'bold' },
-  gameContainer: { width: '100%', maxWidth: '400px', textAlign: 'center', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' },
-  headerRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', width: '100%' },
+  gameContainer: { width: '100%', maxWidth: '400px', textAlign: 'center' },
+  headerRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' },
   gameGrid: { display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '8px', background: 'rgba(255,255,255,0.03)', padding: '15px', borderRadius: '25px', touchAction: 'none' },
-  cell: { aspectRatio: '1/1', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '12px', fontSize: 'min(18px, 5vw)', fontWeight: 'bold', transition: '0.2s', userSelect: 'none' },
-  calendarGrid: { display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '10px', marginTop: '20px', width: '100%' },
+  cell: { aspectRatio: '1/1', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '12px', fontSize: '18px', fontWeight: 'bold', transition: '0.2s', userSelect: 'none' },
+  calendarGrid: { display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '10px', marginTop: '20px' },
   calendarCell: { aspectRatio: '1/1', background: 'rgba(255,255,255,0.05)', borderRadius: '15px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' },
-  modalOverlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 },
-  glassCard: { background: '#1e293b', padding: '30px', borderRadius: '30px', textAlign: 'center', width: '85%', border: '1px solid rgba(255,255,255,0.1)' },
+  modalOverlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 },
+  glassCard: { background: '#1e293b', padding: '30px', borderRadius: '30px', textAlign: 'center', width: '80%', border: '1px solid rgba(255,255,255,0.1)' },
   neonText: { color: '#00f2fe', textShadow: '0 0 10px #00f2fe', fontSize: '24px' },
   neonButton: { width: '100%', padding: '15px', background: '#00f2fe', border: 'none', borderRadius: '15px', fontWeight: 'bold', marginTop: '20px' },
   glassInput: { width: '100%', padding: '15px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '15px', color: 'white', marginBottom: '20px', outline: 'none' },
