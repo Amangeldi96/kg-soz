@@ -4,7 +4,7 @@ const COLORS = ['#26a69a', '#d4e157', '#ef5350', '#42a5f5', '#ab47bc', '#ffa726'
 const KYRGYZ_ALPHABET = "АБВГДЕЁЖЗИЙКЛМНОПРСТУҮФХЦЧШЩЪЫЬЭЮЯӨҢ";
 
 const FilwordGame = ({ wordsData = [] }) => {
-  // --- STATES (Сенин бардык өзгөрмөлөрүң сакталды) ---
+  // --- STATES ---
   const [user, setUser] = useState(() => JSON.parse(localStorage.getItem('filword_user')));
   const [view, setView] = useState('menu'); 
   const [currentCatIndex, setCurrentCatIndex] = useState(() => parseInt(localStorage.getItem('filword_level')) || 0);
@@ -22,13 +22,16 @@ const FilwordGame = ({ wordsData = [] }) => {
   const gridSize = 6;
   const today = new Date().getDate();
 
-  // Навигация элементтери (Сенин CSS'иңдеги 1, 2, 3, 4-чи орундар үчүн)
+  // Навигация - Сенин менюңдагы 5 орунга (70px-75px) такталды
   const navItems = [
     { id: 'menu', icon: 'home-outline', text: 'Башкы' },
     { id: 'calendar', icon: 'calendar-outline', text: 'Күн' },
     { id: 'profile', icon: 'person-outline', text: 'Профиль' },
+    { id: 'stats', icon: 'bar-chart-outline', text: 'Рейтинг' },
     { id: 'settings', icon: 'settings-outline', text: 'Чыгуу' }
   ];
+  
+  const activeIndex = navItems.findIndex(item => item.id === view);
 
   useEffect(() => {
     localStorage.setItem('filword_level', currentCatIndex);
@@ -36,7 +39,7 @@ const FilwordGame = ({ wordsData = [] }) => {
     localStorage.setItem('completed_days', JSON.stringify(completedDays));
   }, [currentCatIndex, score, completedDays]);
 
-  // --- GAME GENERATION (Сенин оригиналдуу алгоритмиң) ---
+  // --- GAME GENERATION (Календарь жана Меню үчүн бирдей иштейт) ---
   const generateLevel = useCallback((index, daily = false) => {
     const category = wordsData[index % wordsData.length];
     if (!category) return;
@@ -94,7 +97,7 @@ const FilwordGame = ({ wordsData = [] }) => {
     setView('game');
   }, [wordsData]);
 
-  // --- SELECTION LOGIC (Сенин оригиналдуу логикаң) ---
+  // --- SELECTION LOGIC ---
   const startSelection = (r, c) => {
     if (foundWords.some(f => f.cells.some(s => s.r === r && s.c === c))) return;
     setIsSelecting(true);
@@ -150,6 +153,20 @@ const FilwordGame = ({ wordsData = [] }) => {
 
   return (
     <div onMouseUp={endSelection} onTouchEnd={endSelection} style={styles.fullPage}>
+      <style>{`
+        body { overflow: hidden; overscroll-behavior: none; margin: 0; padding: 0; }
+        .navigation { position: fixed; bottom: 20px; width: 350px; height: 70px; background: #fff; display: flex; justify-content: center; align-items: center; border-radius: 20px; z-index: 1000; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+        .navigation ul { display: flex; width: 350px; padding: 0; margin: 0; list-style: none; position: relative; }
+        .navigation ul li { position: relative; width: 70px; height: 70px; z-index: 1; cursor: pointer; }
+        .navigation ul li a { position: relative; display: flex; justify-content: center; align-items: center; flex-direction: column; width: 100%; text-align: center; }
+        .navigation ul li a .icon { position: relative; display: block; line-height: 75px; font-size: 1.5em; transition: 0.5s; color: #222327; }
+        .navigation ul li.active a .icon { transform: translateY(-32px); color: #fff; }
+        .navigation ul li a .text { position: absolute; color: #222327; font-weight: 500; font-size: 0.75em; letter-spacing: 0.05em; transition: 0.5s; opacity: 0; transform: translateY(20px); }
+        .navigation ul li.active a .text { opacity: 1; transform: translateY(10px); }
+        .indicator { position: absolute; top: -50%; width: 70px; height: 70px; background: #29fd53; border-radius: 50%; border: 6px solid #0f172a; transition: 0.5s; transform: translateX(calc(70px * ${activeIndex})); }
+        .indicator::before { content: ''; position: absolute; top: 50%; left: -22px; width: 20px; height: 20px; background: transparent; border-top-right-radius: 20px; box-shadow: 1px -10px 0 0 #0f172a; }
+        .indicator::after { content: ''; position: absolute; top: 50%; right: -22px; width: 20px; height: 20px; background: transparent; border-top-left-radius: 20px; box-shadow: -1px -10px 0 0 #0f172a; }
+      `}</style>
 
       <div style={styles.contentArea}>
         {view === 'menu' && (
@@ -206,13 +223,24 @@ const FilwordGame = ({ wordsData = [] }) => {
                 <h2 style={styles.neonText}>Жылнама</h2>
                 <div style={styles.calendarGrid}>
                     {Array.from({ length: 30 }, (_, i) => i + 1).map(day => (
-                        <div key={day} onClick={() => generateLevel(day + 100, true)} 
-                             style={{...styles.calendarCell, background: completedDays.includes(day) ? '#10b981' : 'rgba(255,255,255,0.05)'}}>
+                        <div key={day} onClick={() => generateLevel(day - 1, true)} 
+                             style={{...styles.calendarCell, 
+                                     background: completedDays.includes(day) ? '#10b981' : 'rgba(255,255,255,0.05)',
+                                     border: day === today ? '2px solid #29fd53' : 'none'
+                             }}>
                             {day}
                         </div>
                     ))}
                 </div>
             </div>
+        )}
+
+        {view === 'profile' && (
+          <div style={{textAlign: 'center', marginTop: '50px'}}>
+             <div style={{width: '100px', height: '100px', background: '#29fd53', borderRadius: '50%', margin: '0 auto 20px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '40px'}}>👤</div>
+             <h2 style={styles.neonText}>{user.name}</h2>
+             <div style={styles.glassBadge}>Жалпы упай: {score}</div>
+          </div>
         )}
       </div>
 
@@ -222,50 +250,44 @@ const FilwordGame = ({ wordsData = [] }) => {
             <h2 style={styles.neonText}>ЖЕҢИШ!</h2>
             <p>Сиз бардык сөздөрдү таптыңыз!</p>
             <button onClick={() => {
-                const nextIdx = currentCatIndex + 1;
-                setCurrentCatIndex(nextIdx);
-                generateLevel(nextIdx);
-            }} style={styles.neonButton}>КИЙИНКИ</button>
+                if (!isDaily) {
+                    const nextIdx = currentCatIndex + 1;
+                    setCurrentCatIndex(nextIdx);
+                    generateLevel(nextIdx);
+                } else {
+                    setView('calendar');
+                    setShowWinModal(false);
+                }
+            }} style={styles.neonButton}>УЛАНТУУ</button>
           </div>
         </div>
       )}
 
-      {/* --- СЕНИН ТҮПНУСКА НАВИГАЦИЯҢ (БУЗУЛГАН ЖОК) --- */}
       {view !== 'game' && (
-        <div className="navigation">
+        <nav className="navigation">
           <ul>
             {navItems.map((item) => (
-              <li 
-                key={item.id} 
-                className={view === item.id ? 'active' : ''} 
-                onClick={() => {
-                  if(item.id === 'settings') { 
-                    localStorage.clear(); 
-                    window.location.reload(); 
-                  } else {
-                    setView(item.id);
-                  }
-                }}
-              >
+              <li key={item.id} className={view === item.id ? 'active' : ''} onClick={() => {
+                  if(item.id === 'settings') { localStorage.clear(); window.location.reload(); }
+                  else setView(item.id);
+              }}>
                 <a href="#" onClick={(e) => e.preventDefault()}>
                   <span className="icon"><ion-icon name={item.icon}></ion-icon></span>
                   <span className="text">{item.text}</span>
                 </a>
               </li>
             ))}
-            {/* Индикатор так ушул жерде болушу шарт (CSS үчүн) */}
             <div className="indicator"></div>
           </ul>
-        </div>
+        </nav>
       )}
     </div>
   );
 };
 
-// Стилдерди өзүнчө объектке чыгарып койдум, оюндун ичиндеги макетти кармап турат
 const styles = {
-  fullPage: { background: '#0f172a', minHeight: '100vh', color: 'white', display: 'flex', flexDirection: 'column', alignItems: 'center', fontFamily: 'Poppins, sans-serif', overflow: 'hidden' },
-  contentArea: { flex: 1, width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '20px' },
+  fullPage: { background: '#0f172a', minHeight: '100vh', color: 'white', display: 'flex', flexDirection: 'column', alignItems: 'center', fontFamily: 'sans-serif', overflow: 'hidden' },
+  contentArea: { flex: 1, width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '20px', paddingBottom: '100px' },
   menuInner: { width: '100%', textAlign: 'center', marginTop: '40px' },
   levelCard: { background: 'rgba(255,255,255,0.03)', padding: '40px 20px', borderRadius: '40px', marginBottom: '30px', border: '1px solid rgba(255,255,255,0.05)' },
   progressBar: { width: '80%', height: '10px', background: 'rgba(255,255,255,0.1)', borderRadius: '10px', margin: '20px auto 0' },
@@ -277,12 +299,12 @@ const styles = {
   headerRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' },
   gameGrid: { display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '8px', background: 'rgba(255,255,255,0.03)', padding: '15px', borderRadius: '25px', touchAction: 'none' },
   cell: { aspectRatio: '1/1', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '12px', fontSize: '18px', fontWeight: 'bold', transition: '0.2s', userSelect: 'none' },
-  calendarContainer: { width: '100%', maxWidth: '400px' },
+  calendarContainer: { width: '100%', maxWidth: '400px', textAlign: 'center' },
   calendarGrid: { display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '10px', marginTop: '20px' },
-  calendarCell: { aspectRatio: '1/1', background: 'rgba(255,255,255,0.05)', borderRadius: '15px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' },
+  calendarCell: { aspectRatio: '1/1', borderRadius: '15px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontWeight: 'bold' },
   modalOverlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 },
   glassCard: { background: '#1e293b', padding: '30px', borderRadius: '30px', textAlign: 'center', width: '80%', border: '1px solid rgba(255,255,255,0.1)' },
-  neonText: { color: '#00f2fe', textShadow: '0 0 10px #00f2fe', fontSize: '24px' },
+  neonText: { color: '#00f2fe', textShadow: '0 0 10px #00f2fe', fontSize: '24px', marginBottom: '10px' },
   neonButton: { width: '100%', padding: '15px', background: '#00f2fe', border: 'none', borderRadius: '15px', fontWeight: 'bold', marginTop: '20px' },
   glassInput: { width: '100%', padding: '15px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '15px', color: 'white', marginBottom: '20px', outline: 'none' },
   backBtn: { background: 'none', border: 'none', color: 'white', fontSize: '24px', cursor: 'pointer' },
