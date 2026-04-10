@@ -150,20 +150,6 @@ const FilwordGame = ({ wordsData = [] }) => {
 
   return (
     <div onMouseUp={endSelection} onTouchEnd={endSelection} style={styles.fullPage}>
-      <style>{`
-        body { overflow: hidden; overscroll-behavior: none; }
-        .navigation { position: fixed; bottom: 20px; width: 350px; height: 70px; background: #fff; display: flex; justify-content: center; align-items: center; border-radius: 20px; z-index: 1000; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
-        .navigation ul { display: flex; width: 300px; padding: 0; margin: 0; list-style: none; position: relative; }
-        .navigation ul li { position: relative; width: 75px; height: 70px; z-index: 1; cursor: pointer; }
-        .navigation ul li a { position: relative; display: flex; justify-content: center; align-items: center; flex-direction: column; width: 100%; text-align: center; }
-        .navigation ul li a .icon { position: relative; display: block; line-height: 75px; font-size: 1.5em; transition: 0.5s; color: #222327; }
-        .navigation ul li.active a .icon { transform: translateY(-32px); color: #fff; }
-        .navigation ul li a .text { position: absolute; color: #222327; font-weight: 500; font-size: 0.75em; letter-spacing: 0.05em; transition: 0.5s; opacity: 0; transform: translateY(20px); }
-        .navigation ul li.active a .text { opacity: 1; transform: translateY(10px); }
-        .indicator { position: absolute; top: -50%; width: 70px; height: 70px; background: #29fd53; border-radius: 50%; border: 6px solid #0f172a; transition: 0.5s; transform: translateX(calc(75px * ${activeIndex})); }
-        .indicator::before { content: ''; position: absolute; top: 50%; left: -22px; width: 20px; height: 20px; background: transparent; border-top-right-radius: 20px; box-shadow: 1px -10px 0 0 #0f172a; }
-        .indicator::after { content: ''; position: absolute; top: 50%; right: -22px; width: 20px; height: 20px; background: transparent; border-top-left-radius: 20px; box-shadow: -1px -10px 0 0 #0f172a; }
-      `}</style>
 
       <div style={styles.contentArea}>
         {view === 'menu' && (
