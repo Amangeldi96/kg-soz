@@ -4,6 +4,7 @@ const COLORS = ['#26a69a', '#d4e157', '#ef5350', '#42a5f5', '#ab47bc', '#ffa726'
 const KYRGYZ_ALPHABET = "АБВГДЕЁЖЗИЙКЛМНОПРСТУҮФХЦЧШЩЪЫЬЭЮЯӨҢ";
 
 const FilwordGame = ({ wordsData = [] }) => {
+  // --- STATES ---
   const [user, setUser] = useState(() => JSON.parse(localStorage.getItem('filword_user')));
   const [view, setView] = useState('menu'); 
   const [currentCatIndex, setCurrentCatIndex] = useState(() => parseInt(localStorage.getItem('filword_level')) || 0);
@@ -19,7 +20,15 @@ const FilwordGame = ({ wordsData = [] }) => {
   const [isDaily, setIsDaily] = useState(false);
 
   const gridSize = 6;
-  const gridRef = useRef(null);
+  const today = new Date().getDate();
+
+  const navItems = [
+    { id: 'menu', icon: 'home-outline', text: 'Башкы' },
+    { id: 'calendar', icon: 'calendar-outline', text: 'Күн' },
+    { id: 'profile', icon: 'person-outline', text: 'Профиль' },
+    { id: 'settings', icon: 'settings-outline', text: 'Чыгуу' }
+  ];
+  const activeIndex = navItems.findIndex(item => item.id === view);
 
   useEffect(() => {
     localStorage.setItem('filword_level', currentCatIndex);
@@ -27,8 +36,10 @@ const FilwordGame = ({ wordsData = [] }) => {
     localStorage.setItem('completed_days', JSON.stringify(completedDays));
   }, [currentCatIndex, score, completedDays]);
 
+  // --- GAME GENERATION ---
   const generateLevel = useCallback((index, daily = false) => {
-    const category = wordsData[index % wordsData.length] || { category: "Жалпы", words: ["АЛМА", "КИЛИМ", "ТОО", "БАЛА"] };
+    const category = wordsData[index % wordsData.length];
+    if (!category) return;
 
     let newGrid = Array(gridSize).fill(null).map(() => Array(gridSize).fill(null));
     let finalWords = [];
@@ -83,23 +94,12 @@ const FilwordGame = ({ wordsData = [] }) => {
     setView('game');
   }, [wordsData]);
 
-  // --- TOUCH HANDLERS ---
-  const handleTouchMove = (e) => {
-    if (!isSelecting) return;
-    const touch = e.touches[0];
-    const el = document.elementFromPoint(touch.clientX, touch.clientY);
-    if (el && el.hasAttribute('data-r')) {
-      const r = parseInt(el.getAttribute('data-r'));
-      const c = parseInt(el.getAttribute('data-c'));
-      moveSelection(r, c);
-    }
-  };
-
+  // --- SELECTION LOGIC ---
   const startSelection = (r, c) => {
     if (foundWords.some(f => f.cells.some(s => s.r === r && s.c === c))) return;
     setIsSelecting(true);
     setSelectedCells([{ r, c }]);
-    if (window.navigator.vibrate) window.navigator.vibrate(10);
+    if (window.navigator.vibrate) window.navigator.vibrate(20);
   };
 
   const moveSelection = (r, c) => {
@@ -108,7 +108,6 @@ const FilwordGame = ({ wordsData = [] }) => {
     const last = selectedCells[selectedCells.length - 1];
     if ((last.c === c && Math.abs(last.r - r) === 1) || (last.r === r && Math.abs(last.c - c) === 1)) {
       setSelectedCells(prev => [...prev, { r, c }]);
-      if (window.navigator.vibrate) window.navigator.vibrate(5);
     }
   };
 
@@ -123,110 +122,154 @@ const FilwordGame = ({ wordsData = [] }) => {
       const newFound = [...foundWords, { ...match, cells: [...selectedCells], color }];
       setFoundWords(newFound);
       setScore(prev => prev + (match.word.length * 10));
-      if (window.navigator.vibrate) window.navigator.vibrate([30, 50, 30]);
       if (newFound.length === targetWords.length) {
+        if (isDaily) setCompletedDays(prev => [...new Set([...prev, today])]);
         setTimeout(() => setShowWinModal(true), 500);
       }
     }
     setSelectedCells([]);
   };
 
+  if (!user) {
+    return (
+      <div style={styles.modalOverlay}>
+        <div style={styles.glassCard}>
+          <h2 style={{color: '#00f2fe', marginBottom: '20px'}}>Кыргыз Сөз</h2>
+          <input id="userName" placeholder="Атыңыз" style={styles.glassInput} />
+          <button onClick={() => {
+            const name = document.getElementById('userName').value;
+            if (name) {
+              const newUser = { name, age: 18 };
+              setUser(newUser);
+              localStorage.setItem('filword_user', JSON.stringify(newUser));
+            }
+          }} style={styles.neonButton}>БАШТОО</button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div onMouseUp={endSelection} onTouchEnd={endSelection} style={styles.fullPage}>
       <style>{`
-        body { margin: 0; padding: 0; overflow: hidden; position: fixed; width: 100%; height: 100%; }
-        * { -webkit-tap-highlight-color: transparent; user-select: none; }
-        .nav-item.active .icon { color: #29fd53 !important; transform: translateY(-5px); }
-        .cell-pop { animation: pop 0.2s ease-out; }
-        @keyframes pop { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+        body { overflow: hidden; overscroll-behavior: none; position: fixed; width: 100%; }
+        * { -webkit-tap-highlight-color: transparent; }
+        .navigation { position: fixed; bottom: 20px; width: 90%; max-width: 350px; height: 70px; background: #fff; display: flex; justify-content: center; align-items: center; border-radius: 20px; z-index: 1000; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+        .navigation ul { display: flex; width: 100%; padding: 0; margin: 0; list-style: none; position: relative; }
+        .navigation ul li { position: relative; flex: 1; height: 70px; z-index: 1; cursor: pointer; }
+        .navigation ul li a { position: relative; display: flex; justify-content: center; align-items: center; flex-direction: column; width: 100%; text-align: center; }
+        .navigation ul li a .icon { position: relative; display: block; line-height: 75px; font-size: 1.5em; transition: 0.5s; color: #222327; }
+        .navigation ul li.active a .icon { transform: translateY(-32px); color: #fff; }
+        .navigation ul li a .text { position: absolute; color: #222327; font-weight: 500; font-size: 0.75em; letter-spacing: 0.05em; transition: 0.5s; opacity: 0; transform: translateY(20px); }
+        .navigation ul li.active a .text { opacity: 1; transform: translateY(10px); }
+        .indicator { position: absolute; top: -50%; width: 70px; height: 70px; background: #29fd53; border-radius: 50%; border: 6px solid #0f172a; transition: 0.5s; left: 0; }
       `}</style>
 
-      {view === 'menu' && (
-        <div style={styles.container}>
-          <div style={styles.header}>КЫРГЫЗ СӨЗ</div>
-          <div style={styles.levelCard}>
-            <div style={{opacity: 0.7, fontSize: '14px'}}>ДЕҢГЭЭЛ</div>
-            <div style={{fontSize: '60px', fontWeight: 'bold', color: '#00f2fe'}}>{currentCatIndex + 1}</div>
+      <div style={styles.contentArea}>
+        {view === 'menu' && (
+          <div style={styles.menuInner}>
+            <div style={styles.levelCard}>
+               <div style={{fontSize: '14px', opacity: 0.7}}>УЧУРДАГЫ ДЕҢГЭЭЛ</div>
+               <div style={{fontSize: '54px', fontWeight: '900', color: '#00f2fe'}}>{currentCatIndex + 1}</div>
+               <div style={styles.progressBar}><div style={{...styles.progressFill, width: '40%'}}></div></div>
+            </div>
+            <button onClick={() => generateLevel(currentCatIndex)} style={styles.playBtnLarge}>ОЙНОО</button>
+            <div style={styles.scoreRow}>
+                <div style={styles.glassBadge}>🏆 {score}</div>
+                <div style={styles.glassBadge}>💎 1430</div>
+            </div>
           </div>
-          <button onClick={() => generateLevel(currentCatIndex)} style={styles.mainBtn}>ОЙНОО</button>
-          <div style={styles.statRow}>
-            <div style={styles.glassBadge}>🏆 {score}</div>
-          </div>
-        </div>
-      )}
+        )}
 
-      {view === 'game' && (
-        <div style={styles.gameWrapper}>
-          <div style={styles.gameHeader}>
-            <button onClick={() => setView('menu')} style={styles.iconBtn}>🏠</button>
-            <div style={styles.categoryTag}>{wordsData[currentCatIndex % wordsData.length]?.category || "Оюн"}</div>
-            <div style={styles.scoreTag}>🏆 {score}</div>
+        {view === 'game' && (
+          <div style={styles.gameContainer}>
+            <div style={styles.headerRow}>
+                <button onClick={() => setView('menu')} style={styles.backBtn}>🏠</button>
+                <div style={styles.glassTag}>{wordsData[currentCatIndex % wordsData.length]?.category.replace(/_/g, ' ')}</div>
+                <div style={styles.glassBadge}>🏆 {score}</div>
+            </div>
+            <div 
+              onTouchMove={(e) => {
+                if (e.cancelable) e.preventDefault();
+                const touch = e.touches[0];
+                const el = document.elementFromPoint(touch.clientX, touch.clientY);
+                if (el && el.getAttribute('data-r')) {
+                  moveSelection(parseInt(el.getAttribute('data-r')), parseInt(el.getAttribute('data-c')));
+                }
+              }} 
+              style={styles.gameGrid}
+            >
+                {grid.map((row, r) => row.map((cell, c) => {
+                    const isSel = selectedCells.some(s => s.r === r && s.c === c);
+                    const fnd = foundWords.find(f => f.cells.some(s => s.r === r && s.c === c));
+                    return (
+                        <div key={`${r}-${c}`} data-r={r} data-c={c}
+                            onMouseDown={() => startSelection(r, c)}
+                            onMouseEnter={() => moveSelection(r, c)}
+                            onTouchStart={(e) => { startSelection(r, c); }}
+                            style={{
+                                ...styles.cell,
+                                background: isSel ? '#00f2fe' : fnd ? fnd.color : 'rgba(255, 255, 255, 0.05)',
+                                color: isSel || fnd ? '#000' : '#fff',
+                                transform: isSel ? 'scale(0.95)' : 'scale(1)'
+                            }}
+                        >{cell?.char}</div>
+                    );
+                }))}
+            </div>
+            <div style={{marginTop: '20px', opacity: 0.5, fontSize: '12px'}}>
+                {foundWords.length} / {targetWords.length} сөз табылды
+            </div>
           </div>
+        )}
 
-          <div 
-            ref={gridRef}
-            onTouchMove={handleTouchMove}
-            style={styles.grid}
-          >
-            {grid.map((row, r) => row.map((cell, c) => {
-              const isSel = selectedCells.some(s => s.r === r && s.c === c);
-              const fnd = foundWords.find(f => f.cells.some(s => s.r === r && s.c === c));
-              return (
-                <div 
-                  key={`${r}-${c}`}
-                  data-r={r} data-c={c}
-                  onTouchStart={() => startSelection(r, c)}
-                  onMouseDown={() => startSelection(r, c)}
-                  onMouseEnter={() => moveSelection(r, c)}
-                  style={{
-                    ...styles.cell,
-                    background: isSel ? '#00f2fe' : fnd ? fnd.color : 'rgba(255, 255, 255, 0.08)',
-                    color: isSel || fnd ? '#000' : '#fff',
-                    transform: isSel ? 'scale(0.95)' : 'scale(1)',
-                    boxShadow: isSel ? '0 0 15px #00f2fe' : 'none'
-                  }}
-                >
-                  {cell?.char}
+        {view === 'calendar' && (
+            <div style={styles.calendarContainer}>
+                <h2 style={styles.neonText}>Жылнама</h2>
+                <div style={styles.calendarGrid}>
+                    {Array.from({ length: 30 }, (_, i) => i + 1).map(day => (
+                        <div key={day} onClick={() => generateLevel(day + 100, true)} 
+                             style={{...styles.calendarCell, background: completedDays.includes(day) ? '#10b981' : 'rgba(255,255,255,0.05)'}}>
+                            {day}
+                        </div>
+                    ))}
                 </div>
-              );
-            }))}
-          </div>
-
-          <div style={styles.wordProgress}>
-            {foundWords.length} / {targetWords.length} сөз табылды
-          </div>
-        </div>
-      )}
-
-      {/* Navigation Bar */}
-      {view !== 'game' && (
-        <div style={styles.navBar}>
-          <div onClick={() => setView('menu')} className={`nav-item ${view === 'menu' ? 'active' : ''}`} style={styles.navItem}>
-            <span style={styles.navIcon}>🏠</span>
-            <span style={styles.navText}>Башкы</span>
-          </div>
-          <div onClick={() => setView('calendar')} className={`nav-item ${view === 'calendar' ? 'active' : ''}`} style={styles.navItem}>
-            <span style={styles.navIcon}>📅</span>
-            <span style={styles.navText}>Күн</span>
-          </div>
-          <div onClick={() => { localStorage.clear(); window.location.reload(); }} style={styles.navItem}>
-            <span style={styles.navIcon}>🚪</span>
-            <span style={styles.navText}>Чыгуу</span>
-          </div>
-        </div>
-      )}
+            </div>
+        )}
+      </div>
 
       {showWinModal && (
-        <div style={styles.overlay}>
-          <div style={styles.winCard}>
-            <h2 style={{color: '#4ade80'}}>СОНУН!</h2>
-            <p>Бардык сөздөрдү таптыңыз!</p>
+        <div style={styles.modalOverlay}>
+          <div style={styles.glassCard}>
+            <h2 style={styles.neonText}>ЖЕҢИШ!</h2>
+            <p>Сиз бардык сөздөрдү таптыңыз!</p>
             <button onClick={() => {
-              const next = currentCatIndex + 1;
-              setCurrentCatIndex(next);
-              generateLevel(next);
-            }} style={styles.mainBtn}>КИЙИНКИ</button>
+                const nextLevel = currentCatIndex + 1;
+                setCurrentCatIndex(nextLevel);
+                generateLevel(nextLevel);
+            }} style={styles.neonButton}>КИЙИНКИ</button>
           </div>
+        </div>
+      )}
+
+      {view !== 'game' && (
+        <div className="navigation">
+          <ul>
+            {navItems.map((item, idx) => (
+              <li key={item.id} className={`list ${view === item.id ? 'active' : ''}`} onClick={() => {
+                  if(item.id === 'settings') { localStorage.clear(); window.location.reload(); }
+                  else setView(item.id);
+              }}>
+                <a href="#" onClick={(e) => e.preventDefault()}>
+                  <span className="icon"><ion-icon name={item.icon}></ion-icon></span>
+                  <span className="text">{item.text}</span>
+                </a>
+              </li>
+            ))}
+            <div className="indicator" style={{ 
+                transform: `translateX(calc(${(100 / navItems.length)}% * ${activeIndex} + ${(activeIndex === 0 ? 10 : activeIndex === 1 ? 8 : 5)}px))` 
+            }}></div>
+          </ul>
         </div>
       )}
     </div>
@@ -234,84 +277,63 @@ const FilwordGame = ({ wordsData = [] }) => {
 };
 
 const styles = {
-  fullPage: {
-    background: '#0f172a',
-    height: '100vh',
+  fullPage: { 
+    background: '#0f172a', 
+    height: '100dvh', 
     width: '100vw',
-    display: 'flex',
-    flexDirection: 'column',
-    color: 'white',
-    fontFamily: 'system-ui, sans-serif'
-  },
-  container: {
-    flex: 1,
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: '20px'
-  },
-  header: { fontSize: '28px', fontWeight: '900', letterSpacing: '2px', marginBottom: '40px', color: '#00f2fe' },
-  levelCard: {
-    background: 'rgba(255,255,255,0.05)',
-    width: '80%',
-    padding: '30px',
-    borderRadius: '30px',
-    textAlign: 'center',
-    border: '1px solid rgba(255,255,255,0.1)',
-    marginBottom: '40px'
-  },
-  mainBtn: {
-    background: '#4ade80',
-    color: '#000',
-    border: 'none',
-    padding: '15px 50px',
-    borderRadius: '20px',
-    fontSize: '20px',
-    fontWeight: 'bold',
-    boxShadow: '0 10px 20px rgba(74, 222, 128, 0.3)'
-  },
-  statRow: { display: 'flex', gap: '15px', marginTop: '20px' },
-  glassBadge: { background: 'rgba(255,255,255,0.1)', padding: '10px 20px', borderRadius: '15px' },
-  gameWrapper: { flex: 1, display: 'flex', flexDirection: 'column', padding: '15px' },
-  gameHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', marginTop: '10px' },
-  iconBtn: { background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '12px', padding: '10px', color: 'white' },
-  categoryTag: { background: '#1e293b', padding: '8px 15px', borderRadius: '12px', fontSize: '14px', border: '1px solid #334155' },
-  scoreTag: { fontWeight: 'bold', color: '#fbbf24' },
-  grid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(6, 1fr)',
-    gap: '6px',
-    background: 'rgba(255,255,255,0.03)',
-    padding: '10px',
-    borderRadius: '20px',
-    aspectRatio: '1/1',
+    color: 'white', 
+    display: 'flex', 
+    flexDirection: 'column', 
+    alignItems: 'center', 
+    fontFamily: 'sans-serif', 
+    overflow: 'hidden',
     touchAction: 'none'
   },
-  cell: {
+  contentArea: { flex: 1, width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '15px', paddingTop: 'env(safe-area-inset-top)' },
+  menuInner: { width: '100%', textAlign: 'center', marginTop: '10vh' },
+  levelCard: { background: 'rgba(255,255,255,0.03)', padding: '30px 20px', borderRadius: '30px', marginBottom: '30px', border: '1px solid rgba(255,255,255,0.05)', width: '90%', margin: '0 auto 30px' },
+  progressBar: { width: '80%', height: '8px', background: 'rgba(255,255,255,0.1)', borderRadius: '10px', margin: '20px auto 0' },
+  progressFill: { height: '100%', background: '#4ade80', borderRadius: '10px' },
+  playBtnLarge: { width: '180px', height: '55px', borderRadius: '30px', background: '#4ade80', border: 'none', color: 'black', fontSize: '18px', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 5px 15px rgba(74, 222, 128, 0.4)' },
+  scoreRow: { display: 'flex', gap: '10px', marginTop: '30px', justifyContent: 'center' },
+  glassBadge: { background: 'rgba(255,255,255,0.05)', padding: '8px 15px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', fontWeight: 'bold', fontSize: '14px' },
+  gameContainer: { width: '100%', maxWidth: '500px', textAlign: 'center', display: 'flex', flexDirection: 'column', height: '100%' },
+  headerRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', width: '100%' },
+  gameGrid: { 
+    display: 'grid', 
+    gridTemplateColumns: 'repeat(6, 1fr)', 
+    gap: '6px', 
+    background: 'rgba(255,255,255,0.03)', 
+    padding: '10px', 
+    borderRadius: '20px',
+    touchAction: 'none',
+    width: '95vw',
+    maxWidth: '400px',
     aspectRatio: '1/1',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: '10px',
-    fontSize: '5vw',
-    fontWeight: 'bold',
-    transition: 'all 0.15s ease'
+    margin: '0 auto'
   },
-  wordProgress: { textAlign: 'center', marginTop: '20px', opacity: 0.6, fontSize: '14px' },
-  navBar: {
-    height: '75px',
-    background: '#1e293b',
-    display: 'flex',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    paddingBottom: 'env(safe-area-inset-bottom)'
+  cell: { 
+    aspectRatio: '1/1', 
+    display: 'flex', 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    borderRadius: '8px', 
+    fontSize: 'min(22px, 5.5vw)', 
+    fontWeight: 'bold', 
+    transition: '0.15s ease',
+    userSelect: 'none',
+    boxShadow: 'inset 0 0 10px rgba(255,255,255,0.02)'
   },
-  navItem: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px' },
-  navIcon: { fontSize: '20px' },
-  navText: { fontSize: '12px', opacity: 0.8 },
-  overlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 },
-  winCard: { background: '#1e293b', padding: '40px', borderRadius: '30px', textAlign: 'center', width: '80%' }
+  calendarContainer: { width: '100%', textAlign: 'center' },
+  calendarGrid: { display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '8px', marginTop: '20px', padding: '0 10px' },
+  calendarCell: { aspectRatio: '1/1', background: 'rgba(255,255,255,0.05)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '14px' },
+  modalOverlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 },
+  glassCard: { background: '#1e293b', padding: '30px', borderRadius: '30px', textAlign: 'center', width: '85%', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 20px 40px rgba(0,0,0,0.5)' },
+  neonText: { color: '#00f2fe', textShadow: '0 0 10px #00f2fe', fontSize: '24px', margin: '10px 0' },
+  neonButton: { width: '100%', padding: '15px', background: '#00f2fe', border: 'none', borderRadius: '15px', fontWeight: 'bold', marginTop: '20px', color: 'black' },
+  glassInput: { width: '100%', padding: '15px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '15px', color: 'white', marginBottom: '20px', outline: 'none', boxSizing: 'border-box' },
+  backBtn: { background: 'none', border: 'none', color: 'white', fontSize: '24px', cursor: 'pointer', padding: '5px' },
+  glassTag: { padding: '5px 12px', background: 'rgba(255,255,255,0.1)', borderRadius: '10px', fontSize: '12px', maxWidth: '150px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }
 };
 
 export default FilwordGame;
