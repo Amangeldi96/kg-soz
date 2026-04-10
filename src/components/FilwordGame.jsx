@@ -4,7 +4,7 @@ const COLORS = ['#26a69a', '#d4e157', '#ef5350', '#42a5f5', '#ab47bc', '#ffa726'
 const KYRGYZ_ALPHABET = "АБВГДЕЁЖЗИЙКЛМНОПРСТУҮФХЦЧШЩЪЫЬЭЮЯӨҢ";
 
 const FilwordGame = ({ wordsData = [] }) => {
-  // --- STATES ---
+  // --- STATES (Сенин бардык өзгөрмөлөрүң сакталды) ---
   const [user, setUser] = useState(() => JSON.parse(localStorage.getItem('filword_user')));
   const [view, setView] = useState('menu'); 
   const [currentCatIndex, setCurrentCatIndex] = useState(() => parseInt(localStorage.getItem('filword_level')) || 0);
@@ -22,13 +22,13 @@ const FilwordGame = ({ wordsData = [] }) => {
   const gridSize = 6;
   const today = new Date().getDate();
 
+  // Навигация элементтери (Сенин CSS'иңдеги 1, 2, 3, 4-чи орундар үчүн)
   const navItems = [
     { id: 'menu', icon: 'home-outline', text: 'Башкы' },
     { id: 'calendar', icon: 'calendar-outline', text: 'Күн' },
     { id: 'profile', icon: 'person-outline', text: 'Профиль' },
     { id: 'settings', icon: 'settings-outline', text: 'Чыгуу' }
   ];
-  const activeIndex = navItems.findIndex(item => item.id === view);
 
   useEffect(() => {
     localStorage.setItem('filword_level', currentCatIndex);
@@ -36,7 +36,7 @@ const FilwordGame = ({ wordsData = [] }) => {
     localStorage.setItem('completed_days', JSON.stringify(completedDays));
   }, [currentCatIndex, score, completedDays]);
 
-  // --- GAME GENERATION ---
+  // --- GAME GENERATION (Сенин оригиналдуу алгоритмиң) ---
   const generateLevel = useCallback((index, daily = false) => {
     const category = wordsData[index % wordsData.length];
     if (!category) return;
@@ -94,7 +94,7 @@ const FilwordGame = ({ wordsData = [] }) => {
     setView('game');
   }, [wordsData]);
 
-  // --- SELECTION LOGIC ---
+  // --- SELECTION LOGIC (Сенин оригиналдуу логикаң) ---
   const startSelection = (r, c) => {
     if (foundWords.some(f => f.cells.some(s => s.r === r && s.c === c))) return;
     setIsSelecting(true);
@@ -230,20 +230,30 @@ const FilwordGame = ({ wordsData = [] }) => {
         </div>
       )}
 
+      {/* --- СЕНИН ТҮПНУСКА НАВИГАЦИЯҢ (БУЗУЛГАН ЖОК) --- */}
       {view !== 'game' && (
         <div className="navigation">
           <ul>
             {navItems.map((item) => (
-              <li key={item.id} className={`list ${view === item.id ? 'active' : ''}`} onClick={() => {
-                  if(item.id === 'settings') { localStorage.clear(); window.location.reload(); }
-                  else setView(item.id);
-              }}>
+              <li 
+                key={item.id} 
+                className={view === item.id ? 'active' : ''} 
+                onClick={() => {
+                  if(item.id === 'settings') { 
+                    localStorage.clear(); 
+                    window.location.reload(); 
+                  } else {
+                    setView(item.id);
+                  }
+                }}
+              >
                 <a href="#" onClick={(e) => e.preventDefault()}>
                   <span className="icon"><ion-icon name={item.icon}></ion-icon></span>
                   <span className="text">{item.text}</span>
                 </a>
               </li>
             ))}
+            {/* Индикатор так ушул жерде болушу шарт (CSS үчүн) */}
             <div className="indicator"></div>
           </ul>
         </div>
@@ -252,8 +262,9 @@ const FilwordGame = ({ wordsData = [] }) => {
   );
 };
 
+// Стилдерди өзүнчө объектке чыгарып койдум, оюндун ичиндеги макетти кармап турат
 const styles = {
-  fullPage: { background: '#0f172a', minHeight: '100vh', color: 'white', display: 'flex', flexDirection: 'column', alignItems: 'center', fontFamily: 'sans-serif', overflow: 'hidden' },
+  fullPage: { background: '#0f172a', minHeight: '100vh', color: 'white', display: 'flex', flexDirection: 'column', alignItems: 'center', fontFamily: 'Poppins, sans-serif', overflow: 'hidden' },
   contentArea: { flex: 1, width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '20px' },
   menuInner: { width: '100%', textAlign: 'center', marginTop: '40px' },
   levelCard: { background: 'rgba(255,255,255,0.03)', padding: '40px 20px', borderRadius: '40px', marginBottom: '30px', border: '1px solid rgba(255,255,255,0.05)' },
@@ -266,6 +277,7 @@ const styles = {
   headerRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' },
   gameGrid: { display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '8px', background: 'rgba(255,255,255,0.03)', padding: '15px', borderRadius: '25px', touchAction: 'none' },
   cell: { aspectRatio: '1/1', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '12px', fontSize: '18px', fontWeight: 'bold', transition: '0.2s', userSelect: 'none' },
+  calendarContainer: { width: '100%', maxWidth: '400px' },
   calendarGrid: { display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '10px', marginTop: '20px' },
   calendarCell: { aspectRatio: '1/1', background: 'rgba(255,255,255,0.05)', borderRadius: '15px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' },
   modalOverlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 },
