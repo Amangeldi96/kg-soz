@@ -112,7 +112,7 @@ body {
 }
 
 /* ОЙНОО БАСКЫЧЫ (Градиент менен) */
-.play-button {
+.play-btn-large {
   background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%);
   color: #000;
   border: none;
@@ -128,7 +128,7 @@ body {
   margin: 15px 0;
 }
 
-.play-button:active {
+.play-btn-large:active {
   transform: scale(0.95); /* Басканда кичирейет */
   box-shadow: 0 5px 15px rgba(79, 172, 254, 0.3);
 }
