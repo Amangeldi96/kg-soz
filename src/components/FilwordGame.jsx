@@ -8,7 +8,7 @@ const FilwordGame = ({ wordsData = [] }) => {
   const [view, setView] = useState('menu'); 
   const [currentCatIndex, setCurrentCatIndex] = useState(() => parseInt(localStorage.getItem('filword_level')) || 0);
   const [score, setScore] = useState(() => parseInt(localStorage.getItem('filword_score')) || 0);
-  const [completedDays, setCompletedDays] = useState(() => JSON.parse(localStorage.getItem('completed_days')) || {});
+  const [completedDays, setCompletedDays] = useState(() => JSON.parse(localStorage.getItem('completed_days')) || []);
   
   const [grid, setGrid] = useState([]);
   const [selectedCells, setSelectedCells] = useState([]);
@@ -20,9 +20,15 @@ const FilwordGame = ({ wordsData = [] }) => {
 
   const gridRef = useRef(null);
   const gridSize = 6;
-  
-  // Бүгүнкү күндүн форматы (мисалы: 2026-04-11)
-  const todayDate = new Date().toISOString().split('T')[0];
+  const today = new Date().getDate();
+
+  const navItems = [
+    { id: 'menu', icon: 'home-outline', text: 'Башкы' },
+    { id: 'calendar', icon: 'calendar-outline', text: 'Күн' },
+    { id: 'profile', icon: 'person-outline', text: 'Профиль' },
+    { id: 'stats', icon: 'bar-chart-outline', text: 'Рейтинг' },
+    { id: 'settings', icon: 'settings-outline', text: 'Чыгуу' }
+  ];
 
   useEffect(() => {
     document.body.style.overscrollBehaviorY = 'contain';
@@ -73,6 +79,7 @@ const FilwordGame = ({ wordsData = [] }) => {
         const neighbors = [[1,0], [-1,0], [0,1], [0,-1]]
           .map(([dr, dc]) => ({ r: currR + dr, c: currC + dc }))
           .filter(n => n.r >= 0 && n.r < gridSize && n.c >= 0 && n.c < gridSize && !g[n.r][n.c] && !vis.has(`${n.r},${n.c}`));
+
         for (let n of neighbors) {
           vis.add(`${n.r},${n.c}`);
           path.push(n);
@@ -106,22 +113,22 @@ const FilwordGame = ({ wordsData = [] }) => {
     setView('game');
   }, [wordsData]);
 
-  // ПОДСКАЗКА ЛОГИКАСЫ
+  // ПОДСКАЗКА ФУНКЦИЯСЫ (50 упай алат)
   const useHint = () => {
-    if (score < 50) return alert("Подсказка үчүн 50 упай керек!");
-    
-    // Табыла элек сөздөрдү издөө
-    const remaining = targetWords.filter(tw => !foundWords.some(fw => fw.word === tw.word));
-    if (remaining.length > 0) {
-      const hintWord = remaining[0];
+    if (score < 50) {
+      alert("Упайыңыз жетпейт! (Кеминде 50 упай керек)");
+      return;
+    }
+    const notFound = targetWords.filter(t => !foundWords.some(f => f.word === t.word));
+    if (notFound.length > 0) {
+      const hintWord = notFound[0];
       const color = COLORS[foundWords.length % COLORS.length];
       const newFound = [...foundWords, { ...hintWord, cells: hintWord.path, color }];
-      
       setFoundWords(newFound);
       setScore(prev => prev - 50);
-
       if (newFound.length === targetWords.length) {
-        handleWin(newFound);
+        if (isDaily) setCompletedDays(prev => [...new Set([...prev, today])]);
+        setTimeout(() => setShowWinModal(true), 500);
       }
     }
   };
@@ -147,13 +154,6 @@ const FilwordGame = ({ wordsData = [] }) => {
     }
   };
 
-  const handleWin = (currentFound) => {
-    if (isDaily) {
-      setCompletedDays(prev => ({ ...prev, [todayDate]: true }));
-    }
-    setTimeout(() => setShowWinModal(true), 500);
-  };
-
   const endSelection = () => {
     if (!isSelecting) return;
     setIsSelecting(false);
@@ -165,9 +165,9 @@ const FilwordGame = ({ wordsData = [] }) => {
       const newFound = [...foundWords, { ...match, cells: [...selectedCells], color }];
       setFoundWords(newFound);
       setScore(prev => prev + (match.word.length * 10));
-
       if (newFound.length === targetWords.length) {
-        handleWin(newFound);
+        if (isDaily) setCompletedDays(prev => [...new Set([...prev, today])]);
+        setTimeout(() => setShowWinModal(true), 500);
       }
     }
     setSelectedCells([]);
@@ -191,8 +191,9 @@ const FilwordGame = ({ wordsData = [] }) => {
           <button className="neon-button" onClick={() => {
             const name = document.getElementById('userName').value;
             if (name) {
-              setUser({ name });
-              localStorage.setItem('filword_user', JSON.stringify({ name }));
+              const newUser = { name, age: 18 };
+              setUser(newUser);
+              localStorage.setItem('filword_user', JSON.stringify(newUser));
             }
           }}>БАШТОО</button>
         </div>
@@ -201,40 +202,40 @@ const FilwordGame = ({ wordsData = [] }) => {
   }
 
   return (
-    <div className="full-page" onMouseUp={endSelection} onTouchEnd={endSelection}>
+    <div className="full-page" onMouseUp={endSelection} onTouchEnd={endSelection} style={{ touchAction: 'none', overflow: 'hidden', height: '100vh' }}>
       <div className="content-area">
         {view === 'menu' && (
           <div className="menu-inner">
             <div className="level-card">
               <div className="level-title">УЧУРДАГЫ ТУР</div>
               <div className="level-number">{currentCatIndex + 1}</div>
-              <div className="progress-bar">
-                <div className="progress-fill" style={{ width: `${((currentCatIndex % 10) + 1) * 10}%` }} />
-              </div>
+              <div className="progress-bar"><div className="progress-fill" style={{ width: '40%' }} /></div>
             </div>
             <button className="play-btn-large" onClick={() => generateLevel(currentCatIndex)}>ОЙНОО</button>
             <div className="score-row">
               <div className="glass-badge">🏆 {score}</div>
+              <div className="glass-badge">💎 1430</div>
             </div>
           </div>
         )}
 
         {view === 'calendar' && (
-          <div className="calendar-view">
+          <div className="calendar-container">
             <h2 className="view-title">Күнүмдүк тапшырма</h2>
             <div className="calendar-grid">
-              {[...Array(30)].map((_, i) => {
+              {[...Array(31)].map((_, i) => {
                 const day = i + 1;
-                // Жөнөкөйлүк үчүн айдын күндөрүн текшеребиз
-                const isToday = new Date().getDate() === day;
-                const dateKey = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                const isDone = completedDays[dateKey];
+                const isCompleted = completedDays.includes(day);
+                const isToday = day === today;
+                const isLocked = day > today; // Келечектеги күндөр жабык
 
                 return (
                   <div 
                     key={day} 
-                    className={`day-box ${isToday ? 'today' : ''} ${isDone ? 'done' : ''}`}
-                    onClick={() => (isToday && !isDone) && generateLevel(day + 100, true)}
+                    className={`day-cell ${isCompleted ? 'green' : isToday ? 'blue' : isLocked ? 'locked' : 'missed'}`}
+                    onClick={() => {
+                      if (isToday && !isCompleted) generateLevel(day + 100, true);
+                    }}
                   >
                     {day}
                   </div>
@@ -248,23 +249,20 @@ const FilwordGame = ({ wordsData = [] }) => {
           <div className="game-container">
             <div className="header-row">
               <button className="back-btn" onClick={() => setView('menu')}>🏠</button>
-              <div className="tour-count">ТУР: {currentCatIndex + 1}</div>
-              <button className="hint-btn" onClick={useHint}>💡</button>
+              <div className="tour-badge">ТУР: {currentCatIndex + 1}</div>
+              <button className="hint-btn" onClick={useHint}>💡 Подсказка</button>
               <div className="glass-badge">🏆 {score}</div>
             </div>
-
-            <div className="game-grid" ref={gridRef} onTouchMove={handleTouchMove}>
+            <div className="game-grid" ref={gridRef} onTouchMove={handleTouchMove} style={{ touchAction: 'none' }}>
               {grid.map((row, r) => row.map((cell, c) => {
                 const isSel = selectedCells.some(s => s.r === r && s.c === c);
                 const fnd = foundWords.find(f => f.cells.some(s => s.r === r && s.c === c));
                 return (
-                  <div
-                    key={`${r}-${c}`} data-r={r} data-c={c}
-                    className={`cell ${isSel ? 'selected' : ''} ${fnd ? 'found' : ''}`}
-                    style={fnd ? { background: fnd.color } : {}}
-                    onPointerDown={() => startSelection(r, c)}
-                    onPointerEnter={() => moveSelection(r, c)}
-                  >
+                  <div key={`${r}-${c}`} data-r={r} data-c={c} className={`cell ${isSel ? 'selected' : ''} ${fnd ? 'found' : ''}`}
+                    style={fnd ? { background: fnd.color, border: 'none' } : {}}
+                    onMouseDown={() => startSelection(r, c)}
+                    onTouchStart={() => startSelection(r, c)}
+                    onMouseEnter={() => moveSelection(r, c)}>
                     {cell?.char}
                   </div>
                 );
@@ -276,9 +274,9 @@ const FilwordGame = ({ wordsData = [] }) => {
 
       {showWinModal && (
         <div className="modal-overlay">
-          <div className="glass-card win-modal">
+          <div className="glass-card">
             <h2 className="neon-text">ЖЕҢИШ!</h2>
-            <p>Бардык сөздөр табылды!</p>
+            <p>Сиз бардык сөздөрдү таптыңыз!</p>
             <button className="neon-button" onClick={() => {
               if (!isDaily) {
                 const nextIdx = currentCatIndex + 1;
