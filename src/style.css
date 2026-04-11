@@ -259,38 +259,35 @@ body {
   height: 24px;
 }
 
-
+/*menu*/
 .navigation {
   position: fixed;
   bottom: 25px;
   left: 50%;
   transform: translateX(-50%);
-  
   width: 90%;
-  max-width: 380px;
-  height: 75px;
+  max-width: 400px; /* Бир аз кененирээк кылсак жакшы көрүнөт */
+  height: 70px;
   background: #fff;
   display: flex;
   justify-content: center;
   align-items: center;
-  border-radius: 20px;
+  border-radius: 15px;
   z-index: 1000;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.1);
 }
 
 .navigation ul {
   display: flex;
   width: 100%;
-  justify-content: space-evenly;
-  list-style: none;
   padding: 0;
   margin: 0;
   position: relative;
+  list-style: none;
 }
 
 .navigation ul li {
   position: relative;
-  width: 70px;
+  width: 25%; /* 4 иконка болгондуктан 100% / 4 = 25% */
   height: 70px;
   z-index: 1;
 }
@@ -303,96 +300,58 @@ body {
   flex-direction: column;
   width: 100%;
   text-align: center;
-  text-decoration: none;
 }
 
-/* Иконка */
 .navigation ul li a .icon {
+  position: relative;
+  display: block;
   line-height: 75px;
   font-size: 1.5em;
   transition: 0.5s;
   color: #222327;
-  z-index: 10;
 }
 
 .navigation ul li.active a .icon {
-  transform: translateY(-35px);
+  transform: translateY(-32px);
   color: #fff;
 }
 
-/* Текст */
-.navigation ul li a .text {
-  position: absolute;
-  color: #222327;
-  font-weight: 600;
-  font-size: 0.75em;
-  letter-spacing: 0.05em;
-  transition: 0.5s;
-  opacity: 0;
-  transform: translateY(20px);
-}
-
-.navigation ul li.active a .text {
-  opacity: 1;
-  transform: translateY(10px);
-}
-
-/* Индикатор */
+/* Индикатор - Баардык сыр ушул жерде */
 .indicator {
   position: absolute;
   top: -50%;
-  left: 50%;
-  transform: translateX(-50%);
   width: 70px;
   height: 70px;
   background: #2df456;
   border-radius: 50%;
-  border: 6px solid #0f172a;
-  transition: transform 0.5s ease;
+  border: 6px solid #0f172a; /* Фондун түсү */
+  transition: 0.5s;
   z-index: 0;
+  
+  /* Индикаторду биринчи Li-нин так ортосуна келтиребиз */
+  /* Формула: (Бир Li-нин туурасы / 2) - (Индикатордун жарымы) */
+  left: calc((25% / 2) - 35px); 
 }
 
-/* Индикатордун жылышы – так эсеп */
-.navigation ul li:nth-child(1).active ~ .indicator {
-  transform: translateX(calc(-50% + 0 * 70px));
-}
-.navigation ul li:nth-child(2).active ~ .indicator {
-  transform: translateX(calc(-50% + 1 * 70px));
-}
-.navigation ul li:nth-child(3).active ~ .indicator {
-  transform: translateX(calc(-50% + 2 * 70px));
-}
-.navigation ul li:nth-child(4).active ~ .indicator {
-  transform: translateX(calc(-50% + 3 * 70px));
-}
+/* Кыймыл - Эми ал Li-лердин пайызы менен жылат */
+.navigation ul li:nth-child(1).active ~ .indicator { transform: translateX(calc(100% * 0)); }
+.navigation ul li:nth-child(2).active ~ .indicator { transform: translateX(calc(400px / 4 * 1)); } /* Бул жерде жөнөкөйлөтсөк: */
+
+/* Эң так иштеген кыймыл формуласы: */
+.navigation ul li:nth-child(1).active ~ .indicator { left: calc((25% / 2) - 35px + 0%); }
+.navigation ul li:nth-child(2).active ~ .indicator { left: calc((25% / 2) - 35px + 25%); }
+.navigation ul li:nth-child(3).active ~ .indicator { left: calc((25% / 2) - 35px + 50%); }
+.navigation ul li:nth-child(4).active ~ .indicator { left: calc((25% / 2) - 35px + 75%); }
 
 /* Адаптивдүүлүк */
 @media (max-width: 380px) {
-  .navigation {
-    height: 60px;
-  }
-
-  .navigation ul li {
-    width: 60px;
-    height: 60px;
-  }
-
   .indicator {
     width: 60px;
     height: 60px;
-    top: -45%;
+    left: calc((25% / 2) - 30px); /* 60px-тын жарымы 30px */
   }
-
-  .navigation ul li:nth-child(1).active ~ .indicator {
-    transform: translateX(calc(-50% + 0 * 60px));
-  }
-  .navigation ul li:nth-child(2).active ~ .indicator {
-    transform: translateX(calc(-50% + 1 * 60px));
-  }
-  .navigation ul li:nth-child(3).active ~ .indicator {
-    transform: translateX(calc(-50% + 2 * 60px));
-  }
-  .navigation ul li:nth-child(4).active ~ .indicator {
-    transform: translateX(calc(-50% + 3 * 60px));
-  }
+  .navigation ul li:nth-child(1).active ~ .indicator { left: calc((25% / 2) - 30px + 0%); }
+  .navigation ul li:nth-child(2).active ~ .indicator { left: calc((25% / 2) - 30px + 25%); }
+  .navigation ul li:nth-child(3).active ~ .indicator { left: calc((25% / 2) - 30px + 50%); }
+  .navigation ul li:nth-child(4).active ~ .indicator { left: calc((25% / 2) - 30px + 75%); }
 }
