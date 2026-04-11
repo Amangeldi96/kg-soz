@@ -80,6 +80,89 @@ body {
   color: #000;
   box-shadow: 0 0 15px #00f2fe;
 }
+
+
+/* --- БАШКЫ МЕНЮНУ СТИЛДӨӨ --- */
+.full-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center; /* Элементтерди экрандын ортосуна чогултат */
+  gap: 20px;
+  padding: 20px;
+  text-align: center;
+}
+
+/* Деңгээл жазылган текст */
+.level-info {
+  font-size: 1.2rem;
+  font-weight: 300;
+  color: #cbd5e1;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.level-number {
+  display: block;
+  font-size: 3rem;
+  font-weight: 900;
+  color: #fff;
+  text-shadow: 0 0 20px rgba(0, 242, 254, 0.5);
+  margin-bottom: 10px;
+}
+
+/* ОЙНОО БАСКЫЧЫ (Градиент менен) */
+.play-button {
+  background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%);
+  color: #000;
+  border: none;
+  padding: 15px 50px;
+  font-size: 1.5rem;
+  font-weight: 700;
+  border-radius: 50px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  cursor: pointer;
+  box-shadow: 0 10px 25px rgba(79, 172, 254, 0.4);
+  transition: transform 0.2s, box-shadow 0.2s;
+  margin: 15px 0;
+}
+
+.play-button:active {
+  transform: scale(0.95); /* Басканда кичирейет */
+  box-shadow: 0 5px 15px rgba(79, 172, 254, 0.3);
+}
+
+/* Статистика бөлүмү (Кубок жана Алмаз) */
+.stats-container {
+  display: flex;
+  gap: 30px;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 15px 30px;
+  border-radius: 20px;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.stat-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.stat-item span {
+  color: #fff;
+}
+
+/* Иконкаларды бир аз чоңойтуу */
+.stat-item i, .stat-item img {
+  width: 24px;
+  height: 24px;
+}
+
+
 /* Навигациянын негизги блогу */
 .navigation {
   position: fixed;
