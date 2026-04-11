@@ -17,60 +17,61 @@ body {
   user-select: none;
 }
 
+/* --- НЕГИЗГИ КОНТЕЙНЕР --- */
 .full-page {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
   align-items: center;
-  /* Телефондо четтеринен өтө жабышып калбашы үчүн */
-  padding: 15px;
-}
-
-/* --- ОЮН ТАЛААСЫ --- */
-/* --- ОЮН ТАЛААСЫ (Мобилдик түзмөккө толук ылайыктоо) --- */
-.game-container {
+  padding: 10px 5px; /* Капталдагы боштукту минималдуу кылдык */
   width: 100%;
-  /* Контейнерди экрандын дээрлик бүт туурасына жайылтуу */
-  max-width: 500px; 
-  padding: 0 10px; /* Эки капталынан бир аз эле боштук */
-  text-align: center;
 }
 
+.game-container {
+  width: 100%; 
+  max-width: 100%; /* Чектөөнү алып салдык */
+  padding: 0;
+  margin: 0 auto;
+}
+
+/* --- ОЮН ТАЛААСЫ (Grid) --- */
 .game-grid {
   display: grid;
   grid-template-columns: repeat(6, 1fr); 
-  /* Аралыкты (gap) экранга жараша өзгөрмөлүү кылабыз */
-  gap: 2vw; 
-  margin-top: 20px;
+  /* Экрандын туурасынын 95% ээлеши үчүн */
+  width: 95vw; 
+  margin: 20px auto;
+  gap: 8px; /* Квадраттардын ортосундагы боштук */
   background: rgba(255, 255, 255, 0.05);
-  padding: 12px;
-  border-radius: 20px;
-  width: 100%; /* Талаа өзү толук жайылсын */
+  padding: 10px;
+  border-radius: 15px;
+  box-sizing: border-box;
 }
 
+/* --- КВАДРАТТАР (Cells) --- */
 .cell {
   aspect-ratio: 1/1; 
   background: rgba(255, 255, 255, 0.1);
   display: flex;
   align-items: center;
   justify-content: center;
-  /* Ариптин көлөмүн экранга жараша чоңойтуу */
-  font-size: 5.5vw; 
-  font-weight: bold;
-  border-radius: 12px;
+  /* Текст экранга жараша чоңойсун */
+  font-size: 6vw; 
+  font-weight: 800;
+  border-radius: 10px;
   cursor: pointer;
-  transition: 0.2s;
-  /* Тексттин чектен чыгып кетпеши үчүн */
-  line-height: 1;
+  box-shadow: inset 0 0 5px rgba(255,255,255,0.1);
 }
 
-/* Эгер экран чоң болсо (Планшет же ЖК), арип өтө чоң болуп кетпеши үчүн */
-@media (min-width: 500px) {
-  .cell {
-    font-size: 24px;
-  }
+/* Кичинекей телефондор үчүн кошумча тактоо */
+@media (max-width: 400px) {
   .game-grid {
-    gap: 10px;
+    gap: 5px;
+    padding: 8px;
+    width: 98vw; /* Абдан кичине экранда максималдуу жайылат */
+  }
+  .cell {
+    font-size: 7vw; /* Тамгаларды дагы бир аз чоңойттук */
   }
 }
 
