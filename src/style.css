@@ -27,68 +27,58 @@ body {
 }
 
 /* --- ОЮН ТАЛААСЫ --- */
+/* --- ОЮН ТАЛААСЫ (Мобилдик түзмөккө толук ылайыктоо) --- */
 .game-container {
   width: 100%;
-  /* Кичинекей телефондордо (iPhone SE ж.б.) туура батыш үчүн */
-  max-width: 380px; 
+  /* Контейнерди экрандын дээрлик бүт туурасына жайылтуу */
+  max-width: 500px; 
+  padding: 0 10px; /* Эки капталынан бир аз эле боштук */
   text-align: center;
 }
 
 .game-grid {
   display: grid;
-  /* 6 мамыча - телефондун экранына жараша ийкемдүү болот */
   grid-template-columns: repeat(6, 1fr); 
-  /* Аралыгын бир аз азайттык (телефондо орун үнөмдөө үчүн) */
-  gap: 6px;
+  /* Аралыкты (gap) экранга жараша өзгөрмөлүү кылабыз */
+  gap: 2vw; 
   margin-top: 20px;
   background: rgba(255, 255, 255, 0.05);
-  padding: 10px;
-  border-radius: 15px;
-  /* Торчону ортолоо */
-  margin-left: auto;
-  margin-right: auto;
+  padding: 12px;
+  border-radius: 20px;
+  width: 100%; /* Талаа өзү толук жайылсын */
 }
 
 .cell {
-  aspect-ratio: 1/1;
+  aspect-ratio: 1/1; 
   background: rgba(255, 255, 255, 0.1);
   display: flex;
   align-items: center;
   justify-content: center;
-  /* Телефондо ариптин көлөмү өтө чоң болбошу керек */
-  font-size: clamp(14px, 4vw, 18px); 
+  /* Ариптин көлөмүн экранга жараша чоңойтуу */
+  font-size: 5.5vw; 
   font-weight: bold;
-  border-radius: 8px;
+  border-radius: 12px;
   cursor: pointer;
-  transition: transform 0.1s active, background 0.2s;
-  /* Чек арасы даана көрүнүп турушу үчүн */
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  transition: 0.2s;
+  /* Тексттин чектен чыгып кетпеши үчүн */
+  line-height: 1;
 }
 
-/* Басканда реакция берип, бир аз кичирейет (feedback) */
-.cell:active {
-  transform: scale(0.95);
+/* Эгер экран чоң болсо (Планшет же ЖК), арип өтө чоң болуп кетпеши үчүн */
+@media (min-width: 500px) {
+  .cell {
+    font-size: 24px;
+  }
+  .game-grid {
+    gap: 10px;
+  }
 }
 
 .cell.selected {
   background: #00f2fe;
   color: #000;
-  box-shadow: 0 0 10px #00f2fe;
-  border: none;
+  box-shadow: 0 0 15px #00f2fe;
 }
-
-/* --- КИЧИНЕКЕЙ ЭКРАНДАР ҮЧҮН КОШУМЧА --- */
-@media (max-width: 350px) {
-  .game-grid {
-    gap: 4px;
-    padding: 5px;
-  }
-  .cell {
-    font-size: 12px;
-    border-radius: 5px;
-  }
-}
-
 /* Навигациянын негизги блогу */
 .navigation {
   position: fixed;
