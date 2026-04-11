@@ -291,22 +291,28 @@ const FilwordGame = ({ wordsData = [] }) => {
       )}
 
       {view !== 'game' && (
-        <nav className="navigation">
-          <ul>
-            {navItems.map((item) => (
-              <li key={item.id} className={view === item.id ? 'active' : ''} onClick={() => {
-                if (item.id === 'settings') { localStorage.clear(); window.location.reload(); }
-                else setView(item.id);
-              }}>
-                <a href="#" onClick={(e) => e.preventDefault()}>
-                  <span className="icon"><ion-icon name={item.icon}></ion-icon></span>
-                  <span className="text">{item.text}</span>
-                </a>
-              </li>
-            ))}
-            <div className="indicator" style={{ transform: `translateX(calc(70px * ${navItems.findIndex(i => i.id === view)}))` }}></div>
-          </ul>
-        </nav>
+     <nav className="navigation">
+  <ul>
+    {navItems.map((item, index) => (
+      <li key={item.id} className={view === item.id ? 'active' : ''} onClick={() => {
+        if (item.id === 'settings') { localStorage.clear(); window.location.reload(); }
+        else setView(item.id);
+      }}>
+        <a href="#" onClick={(e) => e.preventDefault()}>
+          <span className="icon"><ion-icon name={item.icon}></ion-icon></span>
+          <span className="text">{item.text}</span>
+        </a>
+      </li>
+    ))}
+    {/* Inline style бөлүгүнө көңүл бур: индекске жараша так 70 пикселден жылат */}
+    <div 
+      className="indicator" 
+      style={{ 
+        transform: `translateX(${navItems.findIndex(i => i.id === view) * 70}px)` 
+      }}
+    ></div>
+  </ul>
+</nav>
       )}
     </div>
   );

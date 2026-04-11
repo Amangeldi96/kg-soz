@@ -265,8 +265,8 @@ body {
   bottom: 25px;
   left: 50%;
   transform: translateX(-50%);
-  width: 90%;
-  max-width: 400px; /* Бир аз кененирээк кылсак жакшы көрүнөт */
+  /* 4 элемент * 70px = 280px. Менюнун туурасы так болушу шарт */
+  width: 280px; 
   height: 70px;
   background: #fff;
   display: flex;
@@ -274,6 +274,7 @@ body {
   align-items: center;
   border-radius: 15px;
   z-index: 1000;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.1);
 }
 
 .navigation ul {
@@ -287,7 +288,8 @@ body {
 
 .navigation ul li {
   position: relative;
-  width: 25%; /* 4 иконка болгондуктан 100% / 4 = 25% */
+  /* Коддогу 70px менен бирдей болушу керек */
+  width: 70px; 
   height: 70px;
   z-index: 1;
 }
@@ -300,6 +302,7 @@ body {
   flex-direction: column;
   width: 100%;
   text-align: center;
+  text-decoration: none;
 }
 
 .navigation ul li a .icon {
@@ -309,14 +312,31 @@ body {
   font-size: 1.5em;
   transition: 0.5s;
   color: #222327;
+  z-index: 10;
 }
 
+/* Активдүү иконканы өйдө көтөрүү */
 .navigation ul li.active a .icon {
-  transform: translateY(-32px);
+  transform: translateY(-35px);
   color: #fff;
 }
 
-/* Индикатор - Баардык сыр ушул жерде */
+.navigation ul li a .text {
+  position: absolute;
+  color: #222327;
+  font-weight: 600;
+  font-size: 0.75em;
+  transition: 0.5s;
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.navigation ul li.active a .text {
+  opacity: 1;
+  transform: translateY(10px);
+}
+
+/* Жашыл Индикатор */
 .indicator {
   position: absolute;
   top: -50%;
@@ -324,9 +344,11 @@ body {
   height: 70px;
   background: #2df456;
   border-radius: 50%;
-  border: 6px solid #0f172a; /* Фондун түсү */
+  border: 6px solid #0f172a; /* Фондун кара түсү */
   transition: 0.5s;
   z-index: 0;
+  left: 0; /* Баштапкы орду */
+}
   
   /* Индикаторду биринчи Li-нин так ортосуна келтиребиз */
   /* Формула: (Бир Li-нин туурасы / 2) - (Индикатордун жарымы) */
