@@ -59,30 +59,33 @@ body {
   box-shadow: 0 0 15px #00f2fe;
 }
 
-/* --- МЕНЮ (Сүрөттөгүдөй так иштеши үчүн) --- */
+/* Навигациянын негизги блогу */
 .navigation {
   position: fixed;
   bottom: 25px;
   width: 90%;
   max-width: 380px;
-  height: 70px;
+  height: 75px;
   background: #fff;
   display: flex;
-  border-radius: 20px;
+  justify-content: center;
+  align-items: center;
+  border-radius: 20px; /* Сүрөттөгүдөй бир аз тик бурчтуураак тегерек */
   z-index: 1000;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.3);
 }
 
 .navigation ul {
   display: flex;
   width: 100%;
-  position: relative;
   list-style: none;
+  padding: 0 10px;
+  position: relative;
 }
 
 .navigation ul li {
   position: relative;
-  flex: 1; /* Ар бир иконка бирдей орун алат */
+  list-style: none;
+  width: 70px;
   height: 70px;
   z-index: 1;
 }
@@ -90,64 +93,80 @@ body {
 .navigation ul li a {
   position: relative;
   display: flex;
-  flex-direction: column;
-  align-items: center;
   justify-content: center;
+  align-items: center;
+  flex-direction: column;
   width: 100%;
-  height: 100%;
+  text-align: center;
+  font-weight: 500;
   text-decoration: none;
 }
 
+/* Иконкалардын стили */
 .navigation ul li a .icon {
   position: relative;
   display: block;
+  line-height: 80px;
   font-size: 1.5em;
-  color: #222327;
+  text-align: center;
   transition: 0.5s;
-  z-index: 10;
+  color: #222327;
+  z-index: 10; /* Иконка жашыл тегеректин үстүндө болуш керек */
 }
 
 /* Активдүү иконка көтөрүлөт */
 .navigation ul li.active a .icon {
-  transform: translateY(-32px);
-  color: #fff;
+  transform: translateY(-35px);
+  color: #fff; /* Жашылдын үстүндө ак болот */
 }
 
-/* Тексттин ордун оңдоо */
+/* Тексттин стили */
 .navigation ul li a .text {
   position: absolute;
-  font-size: 0.7em;
   color: #222327;
-  font-weight: 700;
-  opacity: 0;
+  font-weight: 600;
+  font-size: 0.75em;
+  letter-spacing: 0.05em;
   transition: 0.5s;
-  transform: translateY(10px);
+  opacity: 0;
+  transform: translateY(20px);
 }
 
+/* Активдүү текст көрүнөт */
 .navigation ul li.active a .text {
   opacity: 1;
-  transform: translateY(5px); /* Иконканын так астында */
+  transform: translateY(12px); /* Жашыл тегеректин ичиндеги тексттин орду */
 }
 
-/* Жашыл Индикатор */
+/* Жашыл Индикатор (Тегерек) */
 .indicator {
   position: absolute;
-  top: -50%;
-  width: 65px; /* Бир аз кичирейттик, батыш үчүн */
-  height: 65px;
-  background: #2df456;
+  top: -50%; /* Өйдө чыгып турат */
+  width: 70px;
+  height: 70px;
+  background: #2df456; /* Сүрөттөгүдөй ачык жашыл */
   border-radius: 50%;
-  border: 6px solid #0f172a;
+  border: 6px solid #0f172a; /* Фондун түсү менен чек (border) */
   transition: 0.5s;
 }
 
-/* Индикатордун жылышын автоматташтыруу */
-.navigation ul li:nth-child(1).active ~ .indicator { transform: translateX(calc(100% * 0 + 5px)); }
-.navigation ul li:nth-child(2).active ~ .indicator { transform: translateX(calc(100% * 1 + 5px)); }
-.navigation ul li:nth-child(3).active ~ .indicator { transform: translateX(calc(100% * 2 + 5px)); }
-.navigation ul li:nth-child(4).active ~ .indicator { transform: translateX(calc(100% * 3 + 5px)); }
-.navigation ul li:nth-child(5).active ~ .indicator { transform: translateX(calc(100% * 4 + 5px)); }
+/* Индикатордун ар бир элементке жылышы (JS аркылуу "active" классына жараша) */
+.navigation ul li:nth-child(1).active ~ .indicator { transform: translateX(calc(70px * 0)); }
+.navigation ul li:nth-child(2).active ~ .indicator { transform: translateX(calc(70px * 1)); }
+.navigation ul li:nth-child(3).active ~ .indicator { transform: translateX(calc(70px * 2)); }
+.navigation ul li:nth-child(4).active ~ .indicator { transform: translateX(calc(70px * 3)); }
+.navigation ul li:nth-child(5).active ~ .indicator { transform: translateX(calc(70px * 4)); }
 
+/* Адаптивдүүлүк: Кичинекей экрандар үчүн */
 @media (max-width: 380px) {
-  .indicator { width: 55px; height: 55px; }
+  .navigation {
+    max-width: 320px;
+    height: 65px;
+  }
+  .navigation ul li { width: 60px; }
+  .indicator { width: 60px; height: 60px; }
+  .navigation ul li:nth-child(2).active ~ .indicator { transform: translateX(calc(60px * 1)); }
+  .navigation ul li:nth-child(3).active ~ .indicator { transform: translateX(calc(60px * 2)); }
+  .navigation ul li:nth-child(4).active ~ .indicator { transform: translateX(calc(60px * 3)); }
+  .navigation ul li:nth-child(5).active ~ .indicator { transform: translateX(calc(60px * 4)); }
 }
