@@ -346,13 +346,14 @@ body {
 /* Жашыл Индикатор (Тегерек) */
 .indicator {
   position: absolute;
-  top: -50%; /* Өйдө чыгып турат */
+  top: -50%;
   width: 70px;
   height: 70px;
-  background: #2df456; /* Сүрөттөгүдөй ачык жашыл */
+  background: #2df456;
   border-radius: 50%;
-  border: 6px solid #0f172a; /* Фондун түсү менен чек (border) */
+  border: 6px solid #0f172a; /* Фондун түсү */
   transition: 0.5s;
+  left: calc((100% / 5) * 0 + ( (100% / 5) - 70px ) / 2); 
 }
 
 /* Индикатордун ар бир элементке жылышы (JS аркылуу "active" классына жараша) */
