@@ -89,20 +89,13 @@ body {
     box-sizing: border-box;
 }
 
-/* Календарь үчүн (Кошумча) */
-.calendar-container {
-    width: 100%;
-    padding: 20px;
-    box-sizing: border-box;
-}
-
 .calendar-grid {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 10px;
+    grid-template-columns: repeat(5, 1fr); /* 5 колонка */
+    gap: 8px; /* Уячалардын ортосундагы боштук */
     width: 100%;
-    max-width: 100%;
-    margin: 0 auto;
+    padding: 0 10px; /* Экрандын четине өтө жабышпаш үчүн бир аз боштук */
+    box-sizing: border-box;
 }
 
 .day-cell {
@@ -267,7 +260,6 @@ body {
 }
 
 
-/* Навигациянын негизги блогу */
 .navigation {
   position: fixed;
   bottom: 25px;
@@ -354,16 +346,13 @@ body {
 /* Жашыл Индикатор (Тегерек) */
 .indicator {
   position: absolute;
-  top: -50%;
+  top: -50%; /* Өйдө чыгып турат */
   width: 70px;
   height: 70px;
-  background: #2df456;
+  background: #2df456; /* Сүрөттөгүдөй ачык жашыл */
   border-radius: 50%;
-  border: 6px solid #0f172a; /* Фондун түсү */
+  border: 6px solid #0f172a; /* Фондун түсү менен чек (border) */
   transition: 0.5s;
-  /* Баштапкы позициясын солго жылдыруу */
-  left: calc((100% / 5) * 0 + ( (100% / 5) - 70px ) / 2); 
-  display: none; /* JS иштемейинче көрүнбөй турушу үчүн же алып салсаң болот */
 }
 
 /* Индикатордун ар бир элементке жылышы (JS аркылуу "active" классына жараша) */
