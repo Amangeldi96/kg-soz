@@ -81,18 +81,6 @@ body {
   box-shadow: 0 0 15px #00f2fe;
 }
 
-
-/* --- БАШКЫ МЕНЮНУ СТИЛДӨӨ --- */
-.full-page {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center; /* Элементтерди экрандын ортосуна чогултат */
-  gap: 20px;
-  padding: 20px;
-  text-align: center;
-}
-
 /* Деңгээл жазылган текст */
 .level-info {
   font-size: 1.2rem;

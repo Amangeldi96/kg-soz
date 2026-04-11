@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 
 const COLORS = ['#26a69a', '#d4e157', '#ef5350', '#42a5f5', '#ab47bc', '#ffa726', '#26c6da'];
 const KYRGYZ_ALPHABET = "АБВГДЕЁЖЗИЙКЛМНОПРСТУҮФХЦЧШЩЪЫЬЭЮЯӨҢ";
@@ -18,6 +18,7 @@ const FilwordGame = ({ wordsData = [] }) => {
   const [showWinModal, setShowWinModal] = useState(false);
   const [isDaily, setIsDaily] = useState(false);
 
+  const gridRef = useRef(null); // Гридди көзөмөлдөө үчүн
   const gridSize = 6;
   const today = new Date().getDate();
 
@@ -28,6 +29,12 @@ const FilwordGame = ({ wordsData = [] }) => {
     { id: 'stats', icon: 'bar-chart-outline', text: 'Рейтинг' },
     { id: 'settings', icon: 'settings-outline', text: 'Чыгуу' }
   ];
+
+  // Экранды тартып жибергенде жаңыланбашы үчүн (Pull-to-refresh stop)
+  useEffect(() => {
+    document.body.style.overscrollBehaviorY = 'contain';
+    return () => { document.body.style.overscrollBehaviorY = 'auto'; };
+  }, []);
 
   useEffect(() => {
     localStorage.setItem('filword_level', currentCatIndex);
@@ -87,7 +94,6 @@ const FilwordGame = ({ wordsData = [] }) => {
           vis.delete(`${n.r},${n.c}`);
         }
       };
-
       explore(r, c, [{ r, c }], new Set([`${r},${c}`]));
       return res.sort(() => Math.random() - 0.5).slice(0, 5);
     }
@@ -113,23 +119,30 @@ const FilwordGame = ({ wordsData = [] }) => {
     setView('game');
   }, [wordsData]);
 
+  // Мобилдик тийүүнү баштоо
   const startSelection = (r, c) => {
     if (foundWords.some(f => f.cells.some(s => s.r === r && s.c === c))) return;
     setIsSelecting(true);
     setSelectedCells([{ r, c }]);
+    // Вибрация (интерактивдүүлүк үчүн)
+    if (navigator.vibrate) navigator.vibrate(10);
   };
 
   const moveSelection = (r, c) => {
-    if (!isSelecting ||
-        foundWords.some(f => f.cells.some(s => s.r === r && s.c === c)) ||
-        selectedCells.some(s => s.r === r && s.c === c)) return;
+    if (!isSelecting) return;
+    
+    const isAlreadyFound = foundWords.some(f => f.cells.some(s => s.r === r && s.c === c));
+    const isAlreadySelected = selectedCells.some(s => s.r === r && s.c === c);
+    
+    if (isAlreadyFound || isAlreadySelected) return;
 
     const last = selectedCells[selectedCells.length - 1];
-    if (
-      (last.c === c && Math.abs(last.r - r) === 1) ||
-      (last.r === r && Math.abs(last.c - c) === 1)
-    ) {
+    const isNeighbor = (last.c === c && Math.abs(last.r - r) === 1) ||
+                       (last.r === r && Math.abs(last.c - c) === 1);
+
+    if (isNeighbor) {
       setSelectedCells(prev => [...prev, { r, c }]);
+      if (navigator.vibrate) navigator.vibrate(5);
     }
   };
 
@@ -153,13 +166,24 @@ const FilwordGame = ({ wordsData = [] }) => {
       setScore(prev => prev + (match.word.length * 10));
 
       if (newFound.length === targetWords.length) {
-        if (isDaily) {
-          setCompletedDays(prev => [...new Set([...prev, today])]);
-        }
+        if (isDaily) setCompletedDays(prev => [...new Set([...prev, today])]);
         setTimeout(() => setShowWinModal(true), 500);
       }
     }
     setSelectedCells([]);
+  };
+
+  // Сенсордук кыймылды көзөмөлдөө (Гриддин үстүнөн жылганда кайсы уячада экенин аныктоо)
+  const handleTouchMove = (e) => {
+    if (!isSelecting) return;
+    const touch = e.touches[0];
+    const el = document.elementFromPoint(touch.clientX, touch.clientY);
+    
+    if (el && el.hasAttribute('data-r')) {
+      const r = parseInt(el.getAttribute('data-r'));
+      const c = parseInt(el.getAttribute('data-c'));
+      moveSelection(r, c);
+    }
   };
 
   if (!user) {
@@ -168,29 +192,25 @@ const FilwordGame = ({ wordsData = [] }) => {
         <div className="glass-card">
           <h2 className="neon-text">Кыргыз Сөз</h2>
           <input id="userName" placeholder="Атыңыз" className="glass-input" />
-          <button
-            className="neon-button"
-            onClick={() => {
-              const name = document.getElementById('userName').value;
-              if (name) {
-                const newUser = { name, age: 18 };
-                setUser(newUser);
-                localStorage.setItem('filword_user', JSON.stringify(newUser));
-              }
-            }}
-          >
-            БАШТОО
-          </button>
+          <button className="neon-button" onClick={() => {
+            const name = document.getElementById('userName').value;
+            if (name) {
+              const newUser = { name, age: 18 };
+              setUser(newUser);
+              localStorage.setItem('filword_user', JSON.stringify(newUser));
+            }
+          }}>БАШТОО</button>
         </div>
       </div>
     );
   }
 
   return (
-    <div
+    <div 
       className="full-page"
       onMouseUp={endSelection}
       onTouchEnd={endSelection}
+      style={{ touchAction: 'none', overflow: 'hidden', height: '100vh' }}
     >
       <div className="content-area">
         {view === 'menu' && (
@@ -199,14 +219,11 @@ const FilwordGame = ({ wordsData = [] }) => {
               <div className="level-title">УЧУРДАГЫ ДЕҢГЭЭЛ</div>
               <div className="level-number">{currentCatIndex + 1}</div>
               <div className="progress-bar">
-                <div className="progress-fill" />
+                <div className="progress-fill" style={{ width: '40%' }} />
               </div>
             </div>
 
-            <button
-              className="play-btn-large"
-              onClick={() => generateLevel(currentCatIndex)}
-            >
+            <button className="play-btn-large" onClick={() => generateLevel(currentCatIndex)}>
               ОЙНОО
             </button>
 
@@ -229,23 +246,14 @@ const FilwordGame = ({ wordsData = [] }) => {
 
             <div
               className="game-grid"
-              onPointerMove={(e) => {
-                if (!isSelecting) return;
-                const el = document.elementFromPoint(e.clientX, e.clientY);
-                if (el && el.getAttribute('data-r')) {
-                  moveSelection(
-                    parseInt(el.getAttribute('data-r')),
-                    parseInt(el.getAttribute('data-c'))
-                  );
-                }
-              }}
+              ref={gridRef}
+              onTouchMove={handleTouchMove} // Мобилдик үчүн негизги функция
+              style={{ touchAction: 'none' }} // Экранды жылдырбоо үчүн
             >
               {grid.map((row, r) =>
                 row.map((cell, c) => {
                   const isSel = selectedCells.some(s => s.r === r && s.c === c);
-                  const fnd = foundWords.find(f =>
-                    f.cells.some(s => s.r === r && s.c === c)
-                  );
+                  const fnd = foundWords.find(f => f.cells.some(s => s.r === r && s.c === c));
 
                   return (
                     <div
@@ -253,11 +261,13 @@ const FilwordGame = ({ wordsData = [] }) => {
                       data-r={r}
                       data-c={c}
                       className={`cell ${isSel ? 'selected' : ''} ${fnd ? 'found' : ''}`}
-                      style={fnd ? { background: fnd.color } : {}}
-                      onPointerDown={(e) => {
-                        e.target.releasePointerCapture(e.pointerId);
+                      style={fnd ? { background: fnd.color, border: 'none' } : {}}
+                      onMouseDown={() => startSelection(r, c)}
+                      onTouchStart={(e) => {
+                        // e.preventDefault(); // Баракты тартпоо үчүн
                         startSelection(r, c);
                       }}
+                      onMouseEnter={() => moveSelection(r, c)}
                     >
                       {cell?.char}
                     </div>
@@ -274,21 +284,16 @@ const FilwordGame = ({ wordsData = [] }) => {
           <div className="glass-card">
             <h2 className="neon-text">ЖЕҢИШ!</h2>
             <p>Сиз бардык сөздөрдү таптыңыз!</p>
-            <button
-              className="neon-button"
-              onClick={() => {
-                if (!isDaily) {
-                  const nextIdx = currentCatIndex + 1;
-                  setCurrentCatIndex(nextIdx);
-                  generateLevel(nextIdx);
-                } else {
-                  setView('calendar');
-                  setShowWinModal(false);
-                }
-              }}
-            >
-              УЛАНТУУ
-            </button>
+            <button className="neon-button" onClick={() => {
+              if (!isDaily) {
+                const nextIdx = currentCatIndex + 1;
+                setCurrentCatIndex(nextIdx);
+                generateLevel(nextIdx);
+              } else {
+                setView('calendar');
+                setShowWinModal(false);
+              }
+            }}>УЛАНТУУ</button>
           </div>
         </div>
       )}
@@ -296,31 +301,22 @@ const FilwordGame = ({ wordsData = [] }) => {
       {view !== 'game' && (
         <nav className="navigation">
           <ul>
-            {navItems.map((item, index) => (
-              <li
-                key={item.id}
-                className={view === item.id ? 'active' : ''}
-                onClick={() => {
-                  if (item.id === 'settings') {
-                    localStorage.clear();
-                    window.location.reload();
-                  } else {
-                    setView(item.id);
-                  }
-                }}
-              >
+            {navItems.map((item) => (
+              <li key={item.id} className={view === item.id ? 'active' : ''} onClick={() => {
+                if (item.id === 'settings') {
+                  localStorage.clear();
+                  window.location.reload();
+                } else {
+                  setView(item.id);
+                }
+              }}>
                 <a href="#" onClick={(e) => e.preventDefault()}>
-                  <span className="icon">
-                    <ion-icon name={item.icon}></ion-icon>
-                  </span>
+                  <span className="icon"><ion-icon name={item.icon}></ion-icon></span>
                   <span className="text">{item.text}</span>
                 </a>
               </li>
             ))}
-            <div
-              className="indicator"
-              style={{ transform: `translateX(calc(70px * ${navItems.findIndex(i => i.id === view)}))` }}
-            ></div>
+            <div className="indicator" style={{ transform: `translateX(calc(70px * ${navItems.findIndex(i => i.id === view)}))` }}></div>
           </ul>
         </nav>
       )}
