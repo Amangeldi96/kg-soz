@@ -260,21 +260,19 @@ body {
 }
 
 /*menu*/
+/* Контейнерди бир аз өзгөртөбүз */
 .navigation {
   position: fixed;
   bottom: 25px;
   left: 50%;
   transform: translateX(-50%);
-  /* 4 элемент * 70px = 280px. Менюнун туурасы так болушу шарт */
-  width: 280px; 
-  height: 70px;
+  width: 90%;
+  max-width: 380px; /* Бул өлчөм өзгөрсө да индикатор адашпайт */
+  height: 75px;
   background: #fff;
   display: flex;
-  justify-content: center;
-  align-items: center;
-  border-radius: 15px;
+  border-radius: 20px;
   z-index: 1000;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.1);
 }
 
 .navigation ul {
@@ -288,66 +286,32 @@ body {
 
 .navigation ul li {
   position: relative;
-  /* Коддогу 70px менен бирдей болушу керек */
-  width: 70px; 
+  width: 25%; /* 4 элемент болсо так 25% */
   height: 70px;
   z-index: 1;
 }
 
-.navigation ul li a {
-  position: relative;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  flex-direction: column;
-  width: 100%;
-  text-align: center;
-  text-decoration: none;
-}
-
-.navigation ul li a .icon {
-  position: relative;
-  display: block;
-  line-height: 75px;
-  font-size: 1.5em;
-  transition: 0.5s;
-  color: #222327;
-  z-index: 10;
-}
-
-/* Активдүү иконканы өйдө көтөрүү */
-.navigation ul li.active a .icon {
-  transform: translateY(-35px);
-  color: #fff;
-}
-
-.navigation ul li a .text {
-  position: absolute;
-  color: #222327;
-  font-weight: 600;
-  font-size: 0.75em;
-  transition: 0.5s;
-  opacity: 0;
-  transform: translateY(20px);
-}
-
-.navigation ul li.active a .text {
-  opacity: 1;
-  transform: translateY(10px);
-}
-
-/* Жашыл Индикатор */
+/* Индикатор - left: 0 жана width: 25% кылабыз */
 .indicator {
   position: absolute;
   top: -50%;
+  width: 25%; /* Li менен бирдей тууралыкта */
+  height: 70px;
+  display: flex;
+  justify-content: center; /* Ичиндеги жашыл тегеректи ортолоо үчүн */
+  transition: 0.5s;
+  z-index: 0;
+}
+
+/* Жашыл тегеректин өзүн индикатордун ичине pseudo-element менен жасайбыз */
+.indicator::before {
+  content: '';
+  position: absolute;
   width: 70px;
   height: 70px;
   background: #2df456;
   border-radius: 50%;
-  border: 6px solid #0f172a; /* Фондун кара түсү */
-  transition: 0.5s;
-  z-index: 0;
-  left: 0; /* Баштапкы орду */
+  border: 6px solid #0f172a;
 }
   
 
