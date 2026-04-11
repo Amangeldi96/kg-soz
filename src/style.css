@@ -89,13 +89,20 @@ body {
     box-sizing: border-box;
 }
 
+/* Календарь үчүн (Кошумча) */
+.calendar-container {
+    width: 100%;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
 .calendar-grid {
     display: grid;
-    grid-template-columns: repeat(5, 1fr); /* 5 колонка */
-    gap: 8px; /* Уячалардын ортосундагы боштук */
+    grid-template-columns: repeat(5, 1fr);
+    gap: 10px;
     width: 100%;
-    padding: 0 10px; /* Экрандын четине өтө жабышпаш үчүн бир аз боштук */
-    box-sizing: border-box;
+    max-width: 100%;
+    margin: 0 auto;
 }
 
 .day-cell {
@@ -264,6 +271,10 @@ body {
 .navigation {
   position: fixed;
   bottom: 25px;
+  /* ЭКРАНДЫН ОРТОСУНА КЕЛТИРҮҮ */
+  left: 50%;
+  transform: translateX(-50%);
+  
   width: 90%;
   max-width: 380px;
   height: 75px;
@@ -271,15 +282,18 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
-  border-radius: 20px; /* Сүрөттөгүдөй бир аз тик бурчтуураак тегерек */
+  border-radius: 20px;
   z-index: 1000;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.1);
 }
 
 .navigation ul {
   display: flex;
-  width: 100%;
+  width: 100%; /* Толук туурасын колдонуу */
+  justify-content: space-evenly; /* Иконкаларды бирдей аралыкта бөлүштүрөт */
   list-style: none;
-  padding: 0 10px;
+  padding: 0;
+  margin: 0;
   position: relative;
 }
 
@@ -307,18 +321,17 @@ body {
 .navigation ul li a .icon {
   position: relative;
   display: block;
-  line-height: 80px;
+  line-height: 75px; /* Бийиктикке жараша */
   font-size: 1.5em;
   text-align: center;
   transition: 0.5s;
   color: #222327;
-  z-index: 10; /* Иконка жашыл тегеректин үстүндө болуш керек */
+  z-index: 10;
 }
 
-/* Активдүү иконка көтөрүлөт */
 .navigation ul li.active a .icon {
   transform: translateY(-35px);
-  color: #fff; /* Жашылдын үстүндө ак болот */
+  color: #fff;
 }
 
 /* Тексттин стили */
@@ -333,22 +346,24 @@ body {
   transform: translateY(20px);
 }
 
-/* Активдүү текст көрүнөт */
 .navigation ul li.active a .text {
   opacity: 1;
-  transform: translateY(12px); /* Жашыл тегеректин ичиндеги тексттин орду */
+  transform: translateY(10px);
 }
 
 /* Жашыл Индикатор (Тегерек) */
 .indicator {
   position: absolute;
-  top: -50%; /* Өйдө чыгып турат */
+  top: -50%;
   width: 70px;
   height: 70px;
-  background: #2df456; /* Сүрөттөгүдөй ачык жашыл */
+  background: #2df456;
   border-radius: 50%;
-  border: 6px solid #0f172a; /* Фондун түсү менен чек (border) */
+  border: 6px solid #0f172a; /* Фондун түсү */
   transition: 0.5s;
+  /* Баштапкы позициясын солго жылдыруу */
+  left: calc((100% / 5) * 0 + ( (100% / 5) - 70px ) / 2); 
+  display: none; /* JS иштемейинче көрүнбөй турушу үчүн же алып салсаң болот */
 }
 
 /* Индикатордун ар бир элементке жылышы (JS аркылуу "active" классына жараша) */
