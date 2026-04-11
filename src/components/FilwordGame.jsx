@@ -25,7 +25,6 @@ const FilwordGame = ({ wordsData = [] }) => {
   const navItems = [
     { id: 'menu', icon: 'home-outline', text: 'Башкы' },
     { id: 'calendar', icon: 'calendar-outline', text: 'Күн' },
-    { id: 'profile', icon: 'person-outline', text: 'Профиль' },
     { id: 'stats', icon: 'bar-chart-outline', text: 'Рейтинг' },
     { id: 'settings', icon: 'settings-outline', text: 'Чыгуу' }
   ];
