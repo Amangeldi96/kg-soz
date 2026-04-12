@@ -11,19 +11,18 @@
 
 body {
   background: #0f172a;
-  overflow-x: hidden;
+  overflow: hidden; /* Скроллду токтоттук */
   color: #fff;
-  /* Текстти кокустан белгилеп албаш үчүн (оюнга тоскоол болот) */
   user-select: none;
+  height: 100vh;
 }
-
 /* --- НЕГИЗГИ КОНТЕЙНЕР --- */
 .full-page {
-  min-height: 100vh;
+  height: 100vh;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  padding: 10px 5px; /* Капталдагы боштукту минималдуу кылдык */
+  justify-content: space-between; /* Элементтерди эки чекеге түртөт */
+  padding: 10px 0;
   width: 100%;
 }
 
@@ -82,35 +81,33 @@ body {
 }
 
 
-/* Календарь стили - четтерине чейин чоюлат */
+/* --- КАЛЕНДАРЬ (7 колонка - жумасына толук туура келет) --- */
 .calendar-container {
-    width: 100%;
-    padding: 15px 5px; /* Капталдарындагы боштукту азайттык */
-    box-sizing: border-box;
+  width: 100%;
+  padding: 10px;
 }
 
 .calendar-grid {
-    display: grid;
-    grid-template-columns: repeat(5, 1fr); /* 5 колонка */
-    gap: 8px; /* Уячалардын ортосундагы боштук */
-    width: 100%;
-    padding: 0 10px; /* Экрандын четине өтө жабышпаш үчүн бир аз боштук */
-    box-sizing: border-box;
+  display: grid;
+  grid-template-columns: repeat(7, 1fr); /* 7 күнгө ылайыкталды */
+  gap: 6px;
+  width: 100%;
 }
 
 .day-cell {
-    width: 100%; /* Колонканын туурасына жараша чоюлат */
-    aspect-ratio: 1 / 1; /* Ар дайым квадрат бойдон калат */
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 12px;
-    background: #333;
-    font-weight: bold;
-    font-size: 16px;
-    transition: transform 0.1s active;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: #333;
+  font-weight: bold;
+  font-size: 14px;
 }
 
+.day-cell.blue { background: #42a5f5; border: 2px solid #fff; box-shadow: 0 0 10px rgba(66, 165, 245, 0.5); }
+.day-cell.green { background: #26a69a; }
 /* Оюн талаасы (Grid) - телефондун экранына толук чоюу */
 .game-container {
     width: 100%;
@@ -355,53 +352,7 @@ body {
   transform: scale(0.95);
 }
 
-/* Навигация (меню) үчүн кошумча стилдер */
-.navigation {
-  position: fixed;
-  bottom: 20px;
-  background: rgba(255, 255, 255, 0.1);
-  padding: 10px 20px;
-  border-radius: 40px;
-  backdrop-filter: blur(10px);
-}
 
-.navigation ul {
-  display: flex;
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  position: relative;
-}
-
-.navigation li {
-  width: 70px;
-  text-align: center;
-  z-index: 2;
-}
-
-.navigation a {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-decoration: none;
-  color: #aaa;
-  font-size: 0.8rem;
-}
-
-.navigation li.active a {
-  color: #00f2ff;
-}
-
-.indicator {
-  position: absolute;
-  top: -5px;
-  width: 70px;
-  height: 50px;
-  background: rgba(0, 242, 255, 0.2);
-  border-radius: 15px;
-  transition: 0.5s;
-  z-index: 1;
-}
 
 
 
@@ -538,6 +489,7 @@ body {
 .toggle.on .knob { left: 27px; }
 .logout { margin-top: 20px; color: #ef5350; border: 1px solid rgba(239, 83, 80, 0.3); cursor: pointer; }
 
+
 /* Төмөнкү Меню (Navigation) */
 .navigation {
   position: fixed;
@@ -584,7 +536,7 @@ body {
   position: relative;
   display: block;
   line-height: 75px;
-  font-size: 2em;
+  font-size: 1.5em;
   transition: 0.5s;
   color: #1a1a2e;
 	z-index: 10;
