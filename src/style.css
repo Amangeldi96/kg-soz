@@ -8,6 +8,10 @@
   /* Мобилдик телефондо басканда көк түс чыкпашы үчүн */
   -webkit-tap-highlight-color: transparent;
 }
+html, body {
+  height: 100%;
+  margin: 0;
+}
 
 body {
   background: #0f172a;
@@ -18,11 +22,11 @@ body {
 }
 /* --- НЕГИЗГИ КОНТЕЙНЕР --- */
 .full-page {
-  height: 100%;
+  min-height: 100dvh; /* Мобилдик браузерлер үчүн туура бийиктик */
   display: flex;
   flex-direction: column;
-  justify-content: space-between; /* Элементтерди эки чекеге түртөт */
-  padding: 10px 0;
+  align-items: center;
+  padding: clamp(8px, 2vw, 16px);
   width: 100%;
 }
 
@@ -39,7 +43,7 @@ body {
   grid-template-columns: repeat(6, 1fr); 
   /* Экрандын туурасынын 95% ээлеши үчүн */
   width: 95vw; 
-  margin: 20px auto;
+  margin: -20px auto 0;
   gap: 8px; /* Квадраттардын ортосундагы боштук */
   background: rgba(255, 255, 255, 0.05);
   padding: 10px;
