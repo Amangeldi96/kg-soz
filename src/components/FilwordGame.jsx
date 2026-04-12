@@ -20,10 +20,8 @@ const FilwordGame = ({ wordsData = [] }) => {
   const [categoryName, setCategoryName] = useState(""); 
   const [isSelecting, setIsSelecting] = useState(false);
   const [showWinModal, setShowWinModal] = useState(false);
-  const [isDaily, setIsDaily] = useState(false);
-  const [hintCell, setHintCell] = useState(null); // Бир эле тамга үчүн
+  const [hintCell, setHintCell] = useState(null);
 
-  const gridRef = useRef(null);
   const gridSize = 6;
   const today = new Date().getDate();
 
@@ -40,108 +38,79 @@ const FilwordGame = ({ wordsData = [] }) => {
     localStorage.setItem('completed_days', JSON.stringify(completedDays));
   }, [currentCatIndex, score, completedDays]);
 
-  const logout = () => {
-    if(window.confirm("Профилди өчүрөсүзбү?")) {
-        localStorage.clear();
-        window.location.reload();
+  // СӨЗДҮ ТУТАШ ЖАЙГАШТЫРУУ ФУНКЦИЯСЫ (DFS/BFS)
+  const findSnakePath = (r, c, len, currentGrid) => {
+    let queue = [{ r, c, path: [{ r, c }], vis: new Set([`${r},${c}`]) }];
+    let attempts = 0;
+    
+    while (queue.length > 0 && attempts < 500) {
+      attempts++;
+      let { r: currR, c: currC, path, vis } = queue.shift();
+      if (path.length === len) return path;
+
+      const dirs = [[0, 1], [0, -1], [1, 0], [-1, 0]].sort(() => Math.random() - 0.5);
+      for (let [dr, dc] of dirs) {
+        let nr = currR + dr, nc = currC + dc;
+        if (nr >= 0 && nr < gridSize && nc >= 0 && nc < gridSize && !currentGrid[nr][nc] && !vis.has(`${nr},${nc}`)) {
+          queue.push({ r: nr, c: nc, path: [...path, { r: nr, c: nc }], vis: new Set(vis).add(`${nr},${nc}`) });
+        }
+      }
     }
+    return null;
   };
 
-  const generateLevel = useCallback((index, daily = false) => {
-    const category = wordsData[index % wordsData.length] || { category: "Жалпы", words: ["АЛМА", "КИЛИМ", "КИТЕП"] };
+  const generateLevel = useCallback((index) => {
+    const category = wordsData[index % wordsData.length] || { category: "Жалпы", words: ["АЛМА", "КИЛИМ", "ҮКҮ", "СААТ", "КИНИП"] };
     setCategoryName(category.category || category.name);
 
     let newGrid = Array(gridSize).fill(null).map(() => Array(gridSize).fill(null));
     let finalWords = [];
     
-    const uniqueWords = Array.from(new Set(category.words))
-      .filter(w => w.length >= 3)
-      .map(w => w.toUpperCase())
-      .sort((a, b) => b.length - a.length); // Узун сөздөрдү биринчи тизебиз
+    // Сөздөрдү узунунан баштап тизебиз
+    const pool = [...category.words].map(w => w.toUpperCase()).sort((a, b) => b.length - a.length);
 
-    const solve = (r, c) => {
-      if (r === gridSize) return true;
-      let nextR = c === gridSize - 1 ? r + 1 : r;
-      let nextC = c === gridSize - 1 ? 0 : c + 1;
-      
-      if (newGrid[r][c]) return solve(nextR, nextC);
-
-      const shuffledWords = [...uniqueWords].sort(() => Math.random() - 0.5);
-      for (let word of shuffledWords) {
-        if (finalWords.some(fw => fw.word === word)) continue;
-
-        const paths = findPaths(r, c, word.length, newGrid);
-        for (let path of paths) {
-          path.forEach((p, i) => newGrid[p.r][p.c] = { char: word[i], word });
-          finalWords.push({ word, path });
-          
-          if (solve(nextR, nextC)) return true;
-          
-          // Backtrack
-          finalWords.pop();
-          path.forEach(p => newGrid[p.r][p.c] = null);
+    for (let word of pool) {
+      let placed = false;
+      // Торчодон бош орун издөө
+      for (let r = 0; r < gridSize && !placed; r++) {
+        for (let c = 0; c < gridSize && !placed; c++) {
+          if (!newGrid[r][c]) {
+            const path = findSnakePath(r, c, word.length, newGrid);
+            if (path) {
+              path.forEach((p, i) => { newGrid[p.r][p.c] = { char: word[i], word }; });
+              finalWords.push({ word, path });
+              placed = true;
+            }
+          }
         }
       }
-      return false;
-    };
-
-    function findPaths(r, c, len, g) {
-      let res = [];
-      const explore = (currR, currC, path, vis) => {
-        if (path.length === len) { res.push([...path]); return; }
-        if (res.length > 2) return; // Издөөнү тездетүү
-
-        const neighbors = [[1,0], [-1,0], [0,1], [0,-1]]
-          .map(([dr, dc]) => ({ r: currR + dr, c: currC + dc }))
-          .filter(n => n.r >= 0 && n.r < gridSize && n.c >= 0 && n.c < gridSize && !g[n.r][n.c] && !vis.has(`${n.r},${n.c}`));
-        
-        for (let n of neighbors) {
-          vis.add(`${n.r},${n.c}`);
-          path.push(n);
-          explore(n.r, n.c, path, vis);
-          path.pop();
-          vis.delete(`${n.r},${n.c}`);
-        }
-      };
-      explore(r, c, [{ r, c }], new Set([`${r},${c}`]));
-      return res.sort(() => Math.random() - 0.5);
     }
 
-    // Сөздөрдү жайгаштырууну баштоо
-    solve(0, 0);
-
-    // БОШ ОРУНДАР КАЛСА ТОЛТУРУУ
+    // БОШ КАЛГАН УЯЧАЛАРДЫ АЛФАВИТ МЕНЕН ТОЛТУРУУ (Боз калбашы үчүн)
     for (let r = 0; r < gridSize; r++) {
       for (let c = 0; c < gridSize; c++) {
         if (!newGrid[r][c]) {
-          newGrid[r][c] = {
-            char: KYRGYZ_ALPHABET[Math.floor(Math.random() * KYRGYZ_ALPHABET.length)],
-            isFiller: true
-          };
+          newGrid[r][c] = { char: KYRGYZ_ALPHABET[Math.floor(Math.random() * KYRGYZ_ALPHABET.length)], isFiller: true };
         }
       }
     }
 
-    setGrid([...newGrid]);
+    setGrid(newGrid);
     setTargetWords(finalWords);
     setFoundWords([]);
     setShowWinModal(false);
-    setIsDaily(daily);
     setHintCell(null);
     setView('game');
   }, [wordsData]);
 
   const useHint = () => {
     if (score < 20) {
-      alert("Кеминде 20 упай керек!");
+      alert("Упайыңыз жетпейт!");
       return;
     }
-    // Табыла элек сөздөрдү гана чыпкалоо
     const notFound = targetWords.filter(t => !foundWords.some(f => f.word === t.word));
-    
     if (notFound.length > 0) {
-      const firstCharCell = notFound[0].path[0]; // Табыла элек сөздүн 1-тамгасы
-      setHintCell(firstCharCell);
+      setHintCell(notFound[0].path[0]); // Табыла элек сөздүн 1-тамгасы
       setScore(prev => prev - 20);
       setTimeout(() => setHintCell(null), 1500);
     }
@@ -151,50 +120,35 @@ const FilwordGame = ({ wordsData = [] }) => {
     if (foundWords.some(f => f.cells.some(s => s.r === r && s.c === c))) return;
     setIsSelecting(true);
     setSelectedCells([{ r, c }]);
-    if (soundEnabled && navigator.vibrate) navigator.vibrate(10);
   };
 
   const moveSelection = (r, c) => {
     if (!isSelecting) return;
-    const isAlreadyFound = foundWords.some(f => f.cells.some(s => s.r === r && s.c === c));
-    const isAlreadySelected = selectedCells.some(s => s.r === r && s.c === c);
-    if (isAlreadyFound || isAlreadySelected) return;
+    if (foundWords.some(f => f.cells.some(s => s.r === r && s.c === c))) return;
+    if (selectedCells.some(s => s.r === r && s.c === c)) return;
 
     const last = selectedCells[selectedCells.length - 1];
     const isNeighbor = Math.abs(last.r - r) + Math.abs(last.c - c) === 1;
-    if (isNeighbor) {
-      setSelectedCells(prev => [...prev, { r, c }]);
-      if (soundEnabled && navigator.vibrate) navigator.vibrate(5);
-    }
+    if (isNeighbor) setSelectedCells(prev => [...prev, { r, c }]);
   };
 
   const endSelection = () => {
     if (!isSelecting) return;
     setIsSelecting(false);
     const selectedText = selectedCells.map(cell => grid[cell.r][cell.c].char).join('');
-    
-    // Сөздү жана анын клеткаларынын санын текшерүү
-    const match = targetWords.find(t => 
-        t.word === selectedText && 
-        t.path.length === selectedCells.length &&
-        !foundWords.some(f => f.word === t.word)
-    );
+    const match = targetWords.find(t => t.word === selectedText && t.path.length === selectedCells.length && !foundWords.some(f => f.word === t.word));
 
     if (match) {
       const color = COLORS[foundWords.length % COLORS.length];
       const newFound = [...foundWords, { ...match, cells: [...selectedCells], color }];
       setFoundWords(newFound);
-      setScore(prev => prev + (match.word.length * 10));
-      if (newFound.length === targetWords.length) {
-        if (isDaily) setCompletedDays(prev => [...new Set([...prev, today])]);
-        setTimeout(() => setShowWinModal(true), 500);
-      }
+      setScore(prev => prev + 10);
+      if (newFound.length === targetWords.length) setTimeout(() => setShowWinModal(true), 500);
     }
     setSelectedCells([]);
   };
 
   const handleTouchMove = (e) => {
-    if (!isSelecting) return;
     const touch = e.touches[0];
     const el = document.elementFromPoint(touch.clientX, touch.clientY);
     if (el && el.hasAttribute('data-r')) {
@@ -202,102 +156,45 @@ const FilwordGame = ({ wordsData = [] }) => {
     }
   };
 
-  if (!user) {
-    return (
-      <div className="modal-overlay">
-        <div className="glass-card">
-          <h2 className="neon-text">Кыргыз Сөз</h2>
-          <input id="userName" placeholder="Атыңыз" className="glass-input" />
-          <button className="neon-button" onClick={() => {
-            const name = document.getElementById('userName').value;
-            if (name) {
-              setUser({ name });
-              localStorage.setItem('filword_user', JSON.stringify({ name }));
-            }
-          }}>БАШТОО</button>
-        </div>
-      </div>
-    );
-  }
+  if (!user) return <div className="p-20 text-center">Профиль жүктөлүүдө...</div>;
 
   return (
-    <div className="full-page" onMouseUp={endSelection} onTouchEnd={endSelection} style={{ touchAction: 'none', overflow: 'hidden', height: '100vh' }}>
+    <div className="full-page" onMouseUp={endSelection} onTouchEnd={endSelection} style={{ touchAction: 'none', background: '#0f172a', height: '100vh', color: 'white' }}>
       
       {view === 'game' && (
         <div className="game-header-new">
-          <div className="header-top-row">
-            <button className="icon-btn" onClick={() => setView('menu')}>
+          <div className="header-top-row" style={{ display: 'flex', justifyContent: 'space-between', padding: '15px' }}>
+            <button className="icon-btn" onClick={() => setView('menu')} style={{ background: 'none', border: '1px solid white', color: 'white', borderRadius: '50%', width: '35px', height: '35px' }}>
                 <ion-icon name="arrow-back-outline"></ion-icon>
             </button>
-            <div className="cat-badge-container">
-                <span className="cat-label">КАТЕГОРИЯ</span>
-                <span className="cat-name-main">{categoryName}</span>
+            <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: '10px', opacity: 0.6 }}>КАТЕГОРИЯ</div>
+                <div style={{ fontWeight: 'bold', fontSize: '14px' }}>{categoryName}</div>
             </div>
-            <div className="score-gem-badge">
-                <span className="gem-icon">💎</span>
-                <span className="score-text">{score}</span>
+            <div className="score-gem-badge" style={{ background: 'rgba(255,255,255,0.1)', padding: '5px 12px', borderRadius: '15px' }}>
+                💎 {score}
             </div>
-          </div>
-          <div className="header-bottom-row">
-             <div className="tour-info">ТУР: {currentCatIndex + 1}</div>
           </div>
         </div>
       )}
 
-      <div className="content-area">
+      <div className="content-area" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         {view === 'menu' && (
-          <div className="menu-inner">
-            <div className="level-card">
-              <div className="level-title">УЧУРДАГЫ ТУР</div>
-              <div className="level-number">{currentCatIndex + 1}</div>
-              <div className="progress-bar"><div className="progress-fill" style={{ width: '40%' }} /></div>
+          <div className="menu-inner" style={{ paddingTop: '100px', textAlign: 'center' }}>
+            <h1 style={{ fontSize: '32px', marginBottom: '40px' }}>Кыргыз Сөз</h1>
+            <div className="level-card" style={{ background: '#1e293b', padding: '30px', borderRadius: '20px', marginBottom: '20px' }}>
+              <div style={{ fontSize: '14px' }}>ТУР</div>
+              <div style={{ fontSize: '40px', fontWeight: 'bold' }}>{currentCatIndex + 1}</div>
             </div>
-            <button className="play-btn-large" onClick={() => generateLevel(currentCatIndex)}>ОЙНОО</button>
-            <div className="score-row">
-              <div className="glass-badge">🏆 {score}</div>
-              <div className="glass-badge">💎 {score + 1000}</div>
-            </div>
-          </div>
-        )}
-
-        {view === 'settings' && (
-          <div className="settings-panel">
-            <div className="profile-header">
-                <div className="avatar">{user.name[0].toUpperCase()}</div>
-                <h2 className="user-name">{user.name}</h2>
-            </div>
-            <div className="settings-list">
-                <div className="setting-item">
-                    <span>Музыка</span>
-                    <button className={`toggle ${musicEnabled ? 'on' : ''}`} onClick={() => setMusicEnabled(!musicEnabled)}><div className="knob" /></button>
-                </div>
-                <div className="setting-item">
-                    <span>Үн (Вибрация)</span>
-                    <button className={`toggle ${soundEnabled ? 'on' : ''}`} onClick={() => setSoundEnabled(!soundEnabled)}><div className="knob" /></button>
-                </div>
-                <div className="setting-item logout" onClick={logout} style={{marginTop: '20px', color: '#ef5350', cursor: 'pointer'}}>
-                    <span>Профилди тазалоо</span>
-                    <ion-icon name="log-out-outline"></ion-icon>
-                </div>
-            </div>
-          </div>
-        )}
-
-        {view === 'calendar' && (
-          <div className="calendar-container">
-            <h2 className="view-title">Күнүмдүк</h2>
-            <div className="calendar-grid">
-              {[...Array(31)].map((_, i) => (
-                  <div key={i} className={`day-cell ${completedDays.includes(i+1) ? 'green' : (i+1 === today ? 'blue' : 'locked')}`}
-                    onClick={() => { if (i+1 === today) generateLevel(i + 100, true); }}>{i+1}</div>
-              ))}
-            </div>
+            <button className="play-btn-large" onClick={() => generateLevel(currentCatIndex)} style={{ background: '#22c55e', color: 'white', border: 'none', padding: '15px 60px', borderRadius: '30px', fontSize: '20px', fontWeight: 'bold' }}>
+                ОЙНОО
+            </button>
           </div>
         )}
 
         {view === 'game' && (
-          <div className="game-wrapper">
-            <div className="game-grid" ref={gridRef} onTouchMove={handleTouchMove}>
+          <div className="game-wrapper" style={{ marginTop: '20px' }}>
+            <div className="game-grid" onTouchMove={handleTouchMove} style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '6px', background: '#1e293b', padding: '10px', borderRadius: '12px' }}>
               {grid.map((row, r) => row.map((cell, c) => {
                 const isSel = selectedCells.some(s => s.r === r && s.c === c);
                 const fnd = foundWords.find(f => f.cells.some(s => s.r === r && s.c === c));
@@ -305,19 +202,23 @@ const FilwordGame = ({ wordsData = [] }) => {
                 
                 return (
                   <div key={`${r}-${c}`} data-r={r} data-c={c} 
-                    className={`cell ${isSel ? 'selected' : ''} ${fnd ? 'found' : ''} ${isHint ? 'hint-glow' : ''}`}
-                    style={fnd ? { background: fnd.color, border: 'none', color: '#fff' } : {}}
                     onMouseDown={() => startSelection(r, c)}
-                    onTouchStart={() => startSelection(r, c)}
-                    onMouseEnter={() => moveSelection(r, c)}>
+                    onMouseEnter={() => moveSelection(r, c)}
+                    style={{
+                        width: '50px', height: '50px', background: fnd ? fnd.color : isSel ? '#3b82f6' : '#334155',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px',
+                        fontSize: '18px', fontWeight: 'bold', userSelect: 'none',
+                        border: isHint ? '3px solid #fbbf24' : 'none',
+                        boxShadow: isHint ? '0 0 15px #fbbf24' : 'none'
+                    }}>
                     {cell?.char}
                   </div>
                 );
               }))}
             </div>
-            <div className="game-actions">
-                <button className="hint-btn-new" onClick={useHint}>
-                   <ion-icon name="bulb-outline"></ion-icon> ПОДСКАЗКА
+            <div style={{ textAlign: 'center', marginTop: '30px' }}>
+                <button className="hint-btn-new" onClick={useHint} style={{ background: '#eab308', color: 'black', border: 'none', padding: '12px 30px', borderRadius: '25px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px', margin: '0 auto' }}>
+                   <ion-icon name="bulb-outline"></ion-icon> ПОДСКАЗКА (-20)
                 </button>
             </div>
           </div>
@@ -325,30 +226,28 @@ const FilwordGame = ({ wordsData = [] }) => {
       </div>
 
       {showWinModal && (
-        <div className="modal-overlay">
-          <div className="glass-card">
-            <h2 className="neon-text">ЖЕҢИШ!</h2>
+        <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div className="glass-card" style={{ background: '#1e293b', padding: '40px', borderRadius: '24px', textAlign: 'center', border: '1px solid #22c55e' }}>
+            <h2 style={{ color: '#22c55e', fontSize: '28px' }}>ЖЕҢИШ!</h2>
+            <p style={{ margin: '15px 0 25px' }}>Кийинки турга даярсызбы?</p>
             <button className="neon-button" onClick={() => {
-                const nextIdx = currentCatIndex + 1;
-                setCurrentCatIndex(nextIdx);
-                generateLevel(nextIdx);
-            }}>УЛАНТУУ</button>
+                const next = currentCatIndex + 1;
+                setCurrentCatIndex(next);
+                generateLevel(next);
+            }} style={{ background: '#22c55e', color: 'white', border: 'none', padding: '12px 40px', borderRadius: '15px', fontWeight: 'bold' }}>УЛАНТУУ</button>
           </div>
         </div>
       )}
 
       {view !== 'game' && (
-        <nav className="navigation">
-          <ul>
+        <nav className="navigation" style={{ position: 'fixed', bottom: 0, width: '100%', background: '#1e293b', padding: '10px 0' }}>
+          <ul style={{ display: 'flex', justifyContent: 'space-around', listStyle: 'none', padding: 0 }}>
             {navItems.map((item) => (
-              <li key={item.id} className={view === item.id ? 'active' : ''} onClick={() => setView(item.id)}>
-                <a href="#" onClick={(e) => e.preventDefault()}>
-                  <span className="icon"><ion-icon name={item.icon}></ion-icon></span>
-                  <span className="text">{item.text}</span>
-                </a>
+              <li key={item.id} onClick={() => setView(item.id)} style={{ textAlign: 'center', opacity: view === item.id ? 1 : 0.5 }}>
+                <ion-icon name={item.icon} style={{ fontSize: '22px' }}></ion-icon>
+                <div style={{ fontSize: '10px' }}>{item.text}</div>
               </li>
             ))}
-            <div className="indicator" style={{ transform: `translateX(${navItems.findIndex(i => i.id === view) * 70}px)` }}></div>
           </ul>
         </nav>
       )}
@@ -357,4 +256,4 @@ const FilwordGame = ({ wordsData = [] }) => {
 };
 
 export default FilwordGame;
-                        
+    
