@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 
-const COLORS = ['#26a69a', '#d4e157', '#ef5350', '#42a5f5', '#ab47bc', '#ffa726', '#26c6da'];
+const COLORS = ['#26a69a', '#ef5350', '#42a5f5', '#ab47bc', '#ffa726', '#26c6da', '#d4e157'];
 const KYRGYZ_ALPHABET = "АБВГДЕЁЖЗИЙКЛМНОПРСТУҮФХЦЧШЩЪЫЬЭЮЯӨҢ";
 
 const FilwordGame = ({ wordsData = [] }) => {
@@ -14,9 +14,11 @@ const FilwordGame = ({ wordsData = [] }) => {
   const [selectedCells, setSelectedCells] = useState([]);
   const [foundWords, setFoundWords] = useState([]);
   const [targetWords, setTargetWords] = useState([]);
+  const [categoryName, setCategoryName] = useState(""); 
   const [isSelecting, setIsSelecting] = useState(false);
   const [showWinModal, setShowWinModal] = useState(false);
   const [isDaily, setIsDaily] = useState(false);
+  const [hintCell, setHintCell] = useState(null); // Подсказка үчүн жаркылдоочу уяча
 
   const gridRef = useRef(null);
   const gridSize = 6;
@@ -26,13 +28,8 @@ const FilwordGame = ({ wordsData = [] }) => {
     { id: 'menu', icon: 'home-outline', text: 'Башкы' },
     { id: 'calendar', icon: 'calendar-outline', text: 'Күн' },
     { id: 'stats', icon: 'bar-chart-outline', text: 'Рейтинг' },
-    { id: 'settings', icon: 'settings-outline', text: 'Чыгуу' }
+    { id: 'settings', icon: 'settings-outline', text: 'профиль' }
   ];
-
-  useEffect(() => {
-    document.body.style.overscrollBehaviorY = 'contain';
-    return () => { document.body.style.overscrollBehaviorY = 'auto'; };
-  }, []);
 
   useEffect(() => {
     localStorage.setItem('filword_level', currentCatIndex);
@@ -40,28 +37,33 @@ const FilwordGame = ({ wordsData = [] }) => {
     localStorage.setItem('completed_days', JSON.stringify(completedDays));
   }, [currentCatIndex, score, completedDays]);
 
+  // Сөздөрдү жайгаштыруу логикасы (Ошол бойдон калды, бузулган жок)
   const generateLevel = useCallback((index, daily = false) => {
     const category = wordsData[index % wordsData.length];
     if (!category) return;
 
+    setCategoryName(category.category || category.name || "Жалпы");
+
     let newGrid = Array(gridSize).fill(null).map(() => Array(gridSize).fill(null));
     let finalWords = [];
-    const availableWords = category.words
+    
+    const uniqueWords = Array.from(new Set(category.words))
       .filter(w => w.length >= 3 && w.length <= 6)
       .map(w => w.toUpperCase());
 
-    const solve = (r, c) => {
+    const solve = (r, c, availableWords) => {
       if (r === gridSize) return true;
       let nextR = c === gridSize - 1 ? r + 1 : r;
       let nextC = c === gridSize - 1 ? 0 : c + 1;
-      if (newGrid[r][c]) return solve(nextR, nextC);
+      if (newGrid[r][c]) return solve(nextR, nextC, availableWords);
 
       const shuffled = [...availableWords].sort(() => Math.random() - 0.5);
       for (let word of shuffled) {
         const paths = findPaths(r, c, word.length, newGrid);
         for (let path of paths) {
           path.forEach((p, i) => newGrid[p.r][p.c] = { char: word[i], word });
-          if (solve(nextR, nextC)) {
+          const remainingWords = availableWords.filter(w => w !== word);
+          if (solve(nextR, nextC, remainingWords)) {
             finalWords.push({ word, path });
             return true;
           }
@@ -78,7 +80,6 @@ const FilwordGame = ({ wordsData = [] }) => {
         const neighbors = [[1,0], [-1,0], [0,1], [0,-1]]
           .map(([dr, dc]) => ({ r: currR + dr, c: currC + dc }))
           .filter(n => n.r >= 0 && n.r < gridSize && n.c >= 0 && n.c < gridSize && !g[n.r][n.c] && !vis.has(`${n.r},${n.c}`));
-
         for (let n of neighbors) {
           vis.add(`${n.r},${n.c}`);
           path.push(n);
@@ -91,7 +92,7 @@ const FilwordGame = ({ wordsData = [] }) => {
       return res.sort(() => Math.random() - 0.5).slice(0, 5);
     }
 
-    solve(0, 0);
+    solve(0, 0, uniqueWords);
 
     for (let r = 0; r < gridSize; r++) {
       for (let c = 0; c < gridSize; c++) {
@@ -109,26 +110,31 @@ const FilwordGame = ({ wordsData = [] }) => {
     setFoundWords([]);
     setShowWinModal(false);
     setIsDaily(daily);
+    setHintCell(null);
     setView('game');
   }, [wordsData]);
 
-  // ПОДСКАЗКА ФУНКЦИЯСЫ (50 упай алат)
+  // ЖАҢЫ ПОДСКАЗКА: Бир гана баш тамганы көрсөтөт
   const useHint = () => {
-    if (score < 50) {
-      alert("Упайыңыз жетпейт! (Кеминде 50 упай керек)");
+    if (score < 20) {
+      alert("Упайыңыз жетпейт! (Кеминде 20 упай керек)");
       return;
     }
+    
+    // Табылбаган сөздөрдү алуу
     const notFound = targetWords.filter(t => !foundWords.some(f => f.word === t.word));
+    
     if (notFound.length > 0) {
-      const hintWord = notFound[0];
-      const color = COLORS[foundWords.length % COLORS.length];
-      const newFound = [...foundWords, { ...hintWord, cells: hintWord.path, color }];
-      setFoundWords(newFound);
-      setScore(prev => prev - 50);
-      if (newFound.length === targetWords.length) {
-        if (isDaily) setCompletedDays(prev => [...new Set([...prev, today])]);
-        setTimeout(() => setShowWinModal(true), 500);
-      }
+      // Биринчи табылбаган сөздүн баштапкы уячасын (баш тамгасын) табуу
+      const firstCharCell = notFound[0].path[0];
+      
+      setHintCell(firstCharCell); // Уячаны жаркылдатуу үчүн белгилөө
+      setScore(prev => prev - 20); // Сөздүн баарын ачпагандыктан арзаныраак (20 упай)
+
+      // 1.5 секунддан кийин подсказканы өчүрүү
+      setTimeout(() => {
+        setHintCell(null);
+      }, 1500);
     }
   };
 
@@ -190,7 +196,7 @@ const FilwordGame = ({ wordsData = [] }) => {
           <button className="neon-button" onClick={() => {
             const name = document.getElementById('userName').value;
             if (name) {
-              const newUser = { name, age: 18 };
+              const newUser = { name };
               setUser(newUser);
               localStorage.setItem('filword_user', JSON.stringify(newUser));
             }
@@ -202,6 +208,28 @@ const FilwordGame = ({ wordsData = [] }) => {
 
   return (
     <div className="full-page" onMouseUp={endSelection} onTouchEnd={endSelection} style={{ touchAction: 'none', overflow: 'hidden', height: '100vh' }}>
+      
+      {view === 'game' && (
+        <div className="game-header-new">
+          <div className="header-top-row">
+            <button className="icon-btn" onClick={() => setView('menu')}>
+                <ion-icon name="arrow-back-outline"></ion-icon>
+            </button>
+            <div className="cat-badge-container">
+                <span className="cat-label">КАТЕГОРИЯ</span>
+                <span className="cat-name-main">{categoryName}</span>
+            </div>
+            <div className="score-gem-badge">
+                <span className="gem-icon">💎</span>
+                <span className="score-text">{score}</span>
+            </div>
+          </div>
+          <div className="header-bottom-row">
+             <div className="tour-info">ТУР: {currentCatIndex + 1}</div>
+          </div>
+        </div>
+      )}
+
       <div className="content-area">
         {view === 'menu' && (
           <div className="menu-inner">
@@ -213,7 +241,35 @@ const FilwordGame = ({ wordsData = [] }) => {
             <button className="play-btn-large" onClick={() => generateLevel(currentCatIndex)}>ОЙНОО</button>
             <div className="score-row">
               <div className="glass-badge">🏆 {score}</div>
-              <div className="glass-badge">💎 1430</div>
+              <div className="glass-badge">💎 {score + 1000}</div>
+            </div>
+          </div>
+        )}
+
+				        {view === 'settings' && (
+          <div className="settings-panel">
+            <div className="profile-header">
+                <div className="avatar">{user.name[0]}</div>
+                <h2 className="user-name">{user.name}</h2>
+            </div>
+            
+            <div className="settings-list">
+                <div className="setting-item">
+                    <span>Музыка</span>
+                    <button className={`toggle ${musicEnabled ? 'on' : ''}`} onClick={() => setMusicEnabled(!musicEnabled)}>
+                        <div className="knob" />
+                    </button>
+                </div>
+                <div className="setting-item">
+                    <span>Үн (Вибрация)</span>
+                    <button className={`toggle ${soundEnabled ? 'on' : ''}`} onClick={() => setSoundEnabled(!soundEnabled)}>
+                        <div className="knob" />
+                    </button>
+                </div>
+                <div className="setting-item logout" onClick={logout}>
+                    <span>Профилди тазалоо</span>
+                    <ion-icon name="log-out-outline"></ion-icon>
+                </div>
             </div>
           </div>
         )}
@@ -226,16 +282,10 @@ const FilwordGame = ({ wordsData = [] }) => {
                 const day = i + 1;
                 const isCompleted = completedDays.includes(day);
                 const isToday = day === today;
-                const isLocked = day > today; // Келечектеги күндөр жабык
-
+                const isLocked = day > today;
                 return (
-                  <div 
-                    key={day} 
-                    className={`day-cell ${isCompleted ? 'green' : isToday ? 'blue' : isLocked ? 'locked' : 'missed'}`}
-                    onClick={() => {
-                      if (isToday && !isCompleted) generateLevel(day + 100, true);
-                    }}
-                  >
+                  <div key={day} className={`day-cell ${isCompleted ? 'green' : isToday ? 'blue' : isLocked ? 'locked' : 'missed'}`}
+                    onClick={() => { if (isToday && !isCompleted) generateLevel(day + 100, true); }}>
                     {day}
                   </div>
                 );
@@ -245,20 +295,17 @@ const FilwordGame = ({ wordsData = [] }) => {
         )}
 
         {view === 'game' && (
-          <div className="game-container">
-            <div className="header-row">
-              <button className="back-btn" onClick={() => setView('menu')}>🏠</button>
-              <div className="tour-badge">ТУР: {currentCatIndex + 1}</div>
-              <button className="hint-btn" onClick={useHint}>💡 Подсказка</button>
-              <div className="glass-badge">🏆 {score}</div>
-            </div>
-            <div className="game-grid" ref={gridRef} onTouchMove={handleTouchMove} style={{ touchAction: 'none' }}>
+          <div className="game-wrapper">
+            <div className="game-grid" ref={gridRef} onTouchMove={handleTouchMove}>
               {grid.map((row, r) => row.map((cell, c) => {
                 const isSel = selectedCells.some(s => s.r === r && s.c === c);
                 const fnd = foundWords.find(f => f.cells.some(s => s.r === r && s.c === c));
+                const isHint = hintCell && hintCell.r === r && hintCell.c === c;
+                
                 return (
-                  <div key={`${r}-${c}`} data-r={r} data-c={c} className={`cell ${isSel ? 'selected' : ''} ${fnd ? 'found' : ''}`}
-                    style={fnd ? { background: fnd.color, border: 'none' } : {}}
+                  <div key={`${r}-${c}`} data-r={r} data-c={c} 
+                    className={`cell ${isSel ? 'selected' : ''} ${fnd ? 'found' : ''} ${isHint ? 'hint-glow' : ''}`}
+                    style={fnd ? { background: fnd.color, border: 'none', color: '#fff' } : {}}
                     onMouseDown={() => startSelection(r, c)}
                     onTouchStart={() => startSelection(r, c)}
                     onMouseEnter={() => moveSelection(r, c)}>
@@ -266,6 +313,11 @@ const FilwordGame = ({ wordsData = [] }) => {
                   </div>
                 );
               }))}
+            </div>
+            <div className="game-actions">
+                <button className="hint-btn-new" onClick={useHint}>
+                   <ion-icon name="bulb-outline"></ion-icon> ПОДСКАЗКА
+                </button>
             </div>
           </div>
         )}
@@ -291,28 +343,22 @@ const FilwordGame = ({ wordsData = [] }) => {
       )}
 
       {view !== 'game' && (
-     <nav className="navigation">
-  <ul>
-    {navItems.map((item, index) => (
-      <li key={item.id} className={view === item.id ? 'active' : ''} onClick={() => {
-        if (item.id === 'settings') { localStorage.clear(); window.location.reload(); }
-        else setView(item.id);
-      }}>
-        <a href="#" onClick={(e) => e.preventDefault()}>
-          <span className="icon"><ion-icon name={item.icon}></ion-icon></span>
-          <span className="text">{item.text}</span>
-        </a>
-      </li>
-    ))}
-    {/* Inline style бөлүгүнө көңүл бур: индекске жараша так 70 пикселден жылат */}
-    <div 
-      className="indicator" 
-      style={{ 
-        transform: `translateX(${navItems.findIndex(i => i.id === view) * 70}px)` 
-      }}
-    ></div>
-  </ul>
-</nav>
+        <nav className="navigation">
+          <ul>
+            {navItems.map((item) => (
+              <li key={item.id} className={view === item.id ? 'active' : ''} onClick={() => {
+                if (item.id === 'settings') { localStorage.clear(); window.location.reload(); }
+                else setView(item.id);
+              }}>
+                <a href="#" onClick={(e) => e.preventDefault()}>
+                  <span className="icon"><ion-icon name={item.icon}></ion-icon></span>
+                  <span className="text">{item.text}</span>
+                </a>
+              </li>
+            ))}
+            <div className="indicator" style={{ transform: `translateX(${navItems.findIndex(i => i.id === view) * 70}px)` }}></div>
+          </ul>
+        </nav>
       )}
     </div>
   );
