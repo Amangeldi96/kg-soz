@@ -10,6 +10,10 @@ const FilwordGame = ({ wordsData = [] }) => {
   const [score, setScore] = useState(() => parseInt(localStorage.getItem('filword_score')) || 0);
   const [completedDays, setCompletedDays] = useState(() => JSON.parse(localStorage.getItem('completed_days')) || []);
   
+  // Кошумча керектүү state'тер
+  const [musicEnabled, setMusicEnabled] = useState(true);
+  const [soundEnabled, setSoundEnabled] = useState(true);
+
   const [grid, setGrid] = useState([]);
   const [selectedCells, setSelectedCells] = useState([]);
   const [foundWords, setFoundWords] = useState([]);
@@ -18,7 +22,7 @@ const FilwordGame = ({ wordsData = [] }) => {
   const [isSelecting, setIsSelecting] = useState(false);
   const [showWinModal, setShowWinModal] = useState(false);
   const [isDaily, setIsDaily] = useState(false);
-  const [hintCell, setHintCell] = useState(null); // Подсказка үчүн жаркылдоочу уяча
+  const [hintCell, setHintCell] = useState(null);
 
   const gridRef = useRef(null);
   const gridSize = 6;
@@ -28,7 +32,7 @@ const FilwordGame = ({ wordsData = [] }) => {
     { id: 'menu', icon: 'home-outline', text: 'Башкы' },
     { id: 'calendar', icon: 'calendar-outline', text: 'Күн' },
     { id: 'stats', icon: 'bar-chart-outline', text: 'Рейтинг' },
-    { id: 'settings', icon: 'settings-outline', text: 'профиль' }
+    { id: 'settings', icon: 'settings-outline', text: 'Профиль' }
   ];
 
   useEffect(() => {
@@ -37,7 +41,14 @@ const FilwordGame = ({ wordsData = [] }) => {
     localStorage.setItem('completed_days', JSON.stringify(completedDays));
   }, [currentCatIndex, score, completedDays]);
 
-  // Сөздөрдү жайгаштыруу логикасы (Ошол бойдон калды, бузулган жок)
+  // Профилди тазалоо функциясы
+  const logout = () => {
+    if(window.confirm("Профилди чын эле өчүрөсүзбү?")) {
+        localStorage.clear();
+        window.location.reload();
+    }
+  };
+
   const generateLevel = useCallback((index, daily = false) => {
     const category = wordsData[index % wordsData.length];
     if (!category) return;
@@ -114,27 +125,17 @@ const FilwordGame = ({ wordsData = [] }) => {
     setView('game');
   }, [wordsData]);
 
-  // ЖАҢЫ ПОДСКАЗКА: Бир гана баш тамганы көрсөтөт
   const useHint = () => {
     if (score < 20) {
       alert("Упайыңыз жетпейт! (Кеминде 20 упай керек)");
       return;
     }
-    
-    // Табылбаган сөздөрдү алуу
     const notFound = targetWords.filter(t => !foundWords.some(f => f.word === t.word));
-    
     if (notFound.length > 0) {
-      // Биринчи табылбаган сөздүн баштапкы уячасын (баш тамгасын) табуу
       const firstCharCell = notFound[0].path[0];
-      
-      setHintCell(firstCharCell); // Уячаны жаркылдатуу үчүн белгилөө
-      setScore(prev => prev - 20); // Сөздүн баарын ачпагандыктан арзаныраак (20 упай)
-
-      // 1.5 секунддан кийин подсказканы өчүрүү
-      setTimeout(() => {
-        setHintCell(null);
-      }, 1500);
+      setHintCell(firstCharCell);
+      setScore(prev => prev - 20);
+      setTimeout(() => setHintCell(null), 1500);
     }
   };
 
@@ -142,7 +143,7 @@ const FilwordGame = ({ wordsData = [] }) => {
     if (foundWords.some(f => f.cells.some(s => s.r === r && s.c === c))) return;
     setIsSelecting(true);
     setSelectedCells([{ r, c }]);
-    if (navigator.vibrate) navigator.vibrate(10);
+    if (soundEnabled && navigator.vibrate) navigator.vibrate(10);
   };
 
   const moveSelection = (r, c) => {
@@ -155,7 +156,7 @@ const FilwordGame = ({ wordsData = [] }) => {
     const isNeighbor = (last.c === c && Math.abs(last.r - r) === 1) || (last.r === r && Math.abs(last.c - c) === 1);
     if (isNeighbor) {
       setSelectedCells(prev => [...prev, { r, c }]);
-      if (navigator.vibrate) navigator.vibrate(5);
+      if (soundEnabled && navigator.vibrate) navigator.vibrate(5);
     }
   };
 
@@ -246,10 +247,10 @@ const FilwordGame = ({ wordsData = [] }) => {
           </div>
         )}
 
-				        {view === 'settings' && (
+        {view === 'settings' && (
           <div className="settings-panel">
             <div className="profile-header">
-                <div className="avatar">{user.name[0]}</div>
+                <div className="avatar">{user.name[0].toUpperCase()}</div>
                 <h2 className="user-name">{user.name}</h2>
             </div>
             
@@ -266,7 +267,7 @@ const FilwordGame = ({ wordsData = [] }) => {
                         <div className="knob" />
                     </button>
                 </div>
-                <div className="setting-item logout" onClick={logout}>
+                <div className="setting-item logout" onClick={logout} style={{marginTop: '20px', color: '#ef5350', cursor: 'pointer'}}>
                     <span>Профилди тазалоо</span>
                     <ion-icon name="log-out-outline"></ion-icon>
                 </div>
@@ -345,11 +346,8 @@ const FilwordGame = ({ wordsData = [] }) => {
       {view !== 'game' && (
         <nav className="navigation">
           <ul>
-            {navItems.map((item) => (
-              <li key={item.id} className={view === item.id ? 'active' : ''} onClick={() => {
-                if (item.id === 'settings') { localStorage.clear(); window.location.reload(); }
-                else setView(item.id);
-              }}>
+            {navItems.map((item, idx) => (
+              <li key={item.id} className={view === item.id ? 'active' : ''} onClick={() => setView(item.id)}>
                 <a href="#" onClick={(e) => e.preventDefault()}>
                   <span className="icon"><ion-icon name={item.icon}></ion-icon></span>
                   <span className="text">{item.text}</span>
