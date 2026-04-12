@@ -22,17 +22,17 @@ body {
 }
 /* --- НЕГИЗГИ КОНТЕЙНЕР --- */
 .full-page {
-  min-height: 100dvh; /* Мобилдик браузерлер үчүн туура бийиктик */
+  min-height: 100dvh;  
   display: flex;
   flex-direction: column;
-  align-items: center;
-  padding: clamp(8px, 2vw, 16px);
+  justify-content: space-between; /* Элементтерди эки чекеге түртөт */
+  padding: 10px 0;
   width: 100%;
 }
 
 .game-container {
   width: 100%; 
-  max-width: 100%; /* Чектөөнү алып салдык */
+  max-width: 100%;
   padding: 0;
   margin: 0 auto;
 }
@@ -41,14 +41,15 @@ body {
 .game-grid {
   display: grid;
   grid-template-columns: repeat(6, 1fr); 
-  /* Экрандын туурасынын 95% ээлеши үчүн */
   width: 95vw; 
-  margin: -20px auto 0;
-  gap: 8px; /* Квадраттардын ортосундагы боштук */
+	position: relative;
+  top: -150px;
+  gap: 8px; 
   background: rgba(255, 255, 255, 0.05);
   padding: 10px;
   border-radius: 15px;
   box-sizing: border-box;
+  position: relative; /* Кээде жылдыруу үчүн керек болот */
 }
 
 /* --- КВАДРАТТАР (Cells) --- */
@@ -58,7 +59,6 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  /* Текст экранга жараша чоңойсун */
   font-size: 6vw; 
   font-weight: 800;
   border-radius: 10px;
@@ -66,15 +66,16 @@ body {
   box-shadow: inset 0 0 5px rgba(255,255,255,0.1);
 }
 
-/* Кичинекей телефондор үчүн кошумча тактоо */
+/* Кичинекей телефондор үчүн */
 @media (max-width: 400px) {
   .game-grid {
+    margin-top: -60px; /* Телефондордо экран тар болгондуктан көбүрөөк көтөрдүк */
     gap: 5px;
     padding: 8px;
-    width: 98vw; /* Абдан кичине экранда максималдуу жайылат */
+    width: 98vw;
   }
   .cell {
-    font-size: 7vw; /* Тамгаларды дагы бир аз чоңойттук */
+    font-size: 7vw;
   }
 }
 
@@ -152,10 +153,12 @@ body {
 .header-row {
     width: 100%;
     display: flex;
-    justify-content: space-between; /* Элементтерди эки чекеге түртөт */
+    justify-content: space-between;
     align-items: center;
     padding: 10px 15px;
     box-sizing: border-box;
+    /* Төмөндөгү боштукту алып салуу же терс маани берүү */
+    margin-bottom: -15px; 
 }
 
 .tour-badge {
@@ -438,9 +441,11 @@ body {
 }
 
 .hint-btn-new {
+	position: relative;
     background: #27ae60;
     color: white;
     border: none;
+		top: -100px;
     padding: 12px 25px;
     border-radius: 30px;
     font-weight: bold;
