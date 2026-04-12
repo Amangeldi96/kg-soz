@@ -21,7 +21,7 @@ const FilwordGame = ({ wordsData = [] }) => {
   const [isSelecting, setIsSelecting] = useState(false);
   const [showWinModal, setShowWinModal] = useState(false);
   const [isDaily, setIsDaily] = useState(false);
-  const [hintCells, setHintCells] = useState([]); // Бир эмес, бир нече клетканы көрсөтүү үчүн
+  const [hintCell, setHintCell] = useState(null); // Бир эле тамга үчүн
 
   const gridRef = useRef(null);
   const gridSize = 6;
@@ -41,7 +41,7 @@ const FilwordGame = ({ wordsData = [] }) => {
   }, [currentCatIndex, score, completedDays]);
 
   const logout = () => {
-    if(window.confirm("Профилди чын эле өчүрөсүзбү?")) {
+    if(window.confirm("Профилди өчүрөсүзбү?")) {
         localStorage.clear();
         window.location.reload();
     }
@@ -49,31 +49,36 @@ const FilwordGame = ({ wordsData = [] }) => {
 
   const generateLevel = useCallback((index, daily = false) => {
     const category = wordsData[index % wordsData.length] || { category: "Жалпы", words: ["АЛМА", "КИЛИМ", "КИТЕП"] };
-    setCategoryName(category.category || category.name || "Жалпы");
+    setCategoryName(category.category || category.name);
 
     let newGrid = Array(gridSize).fill(null).map(() => Array(gridSize).fill(null));
     let finalWords = [];
     
     const uniqueWords = Array.from(new Set(category.words))
-      .filter(w => w.length >= 3 && w.length <= 6)
-      .map(w => w.toUpperCase());
+      .filter(w => w.length >= 3)
+      .map(w => w.toUpperCase())
+      .sort((a, b) => b.length - a.length); // Узун сөздөрдү биринчи тизебиз
 
-    const solve = (r, c, availableWords) => {
+    const solve = (r, c) => {
       if (r === gridSize) return true;
       let nextR = c === gridSize - 1 ? r + 1 : r;
       let nextC = c === gridSize - 1 ? 0 : c + 1;
-      if (newGrid[r][c]) return solve(nextR, nextC, availableWords);
+      
+      if (newGrid[r][c]) return solve(nextR, nextC);
 
-      const shuffled = [...availableWords].sort(() => Math.random() - 0.5);
-      for (let word of shuffled) {
+      const shuffledWords = [...uniqueWords].sort(() => Math.random() - 0.5);
+      for (let word of shuffledWords) {
+        if (finalWords.some(fw => fw.word === word)) continue;
+
         const paths = findPaths(r, c, word.length, newGrid);
         for (let path of paths) {
           path.forEach((p, i) => newGrid[p.r][p.c] = { char: word[i], word });
-          const remainingWords = availableWords.filter(w => w !== word);
-          if (solve(nextR, nextC, remainingWords)) {
-            finalWords.push({ word, path });
-            return true;
-          }
+          finalWords.push({ word, path });
+          
+          if (solve(nextR, nextC)) return true;
+          
+          // Backtrack
+          finalWords.pop();
           path.forEach(p => newGrid[p.r][p.c] = null);
         }
       }
@@ -84,9 +89,12 @@ const FilwordGame = ({ wordsData = [] }) => {
       let res = [];
       const explore = (currR, currC, path, vis) => {
         if (path.length === len) { res.push([...path]); return; }
+        if (res.length > 2) return; // Издөөнү тездетүү
+
         const neighbors = [[1,0], [-1,0], [0,1], [0,-1]]
           .map(([dr, dc]) => ({ r: currR + dr, c: currC + dc }))
           .filter(n => n.r >= 0 && n.r < gridSize && n.c >= 0 && n.c < gridSize && !g[n.r][n.c] && !vis.has(`${n.r},${n.c}`));
+        
         for (let n of neighbors) {
           vis.add(`${n.r},${n.c}`);
           path.push(n);
@@ -96,12 +104,13 @@ const FilwordGame = ({ wordsData = [] }) => {
         }
       };
       explore(r, c, [{ r, c }], new Set([`${r},${c}`]));
-      return res.sort(() => Math.random() - 0.5).slice(0, 5);
+      return res.sort(() => Math.random() - 0.5);
     }
 
-    solve(0, 0, uniqueWords);
+    // Сөздөрдү жайгаштырууну баштоо
+    solve(0, 0);
 
-    // Бош орундарды калтырбай толтуруу
+    // БОШ ОРУНДАР КАЛСА ТОЛТУРУУ
     for (let r = 0; r < gridSize; r++) {
       for (let c = 0; c < gridSize; c++) {
         if (!newGrid[r][c]) {
@@ -118,22 +127,23 @@ const FilwordGame = ({ wordsData = [] }) => {
     setFoundWords([]);
     setShowWinModal(false);
     setIsDaily(daily);
-    setHintCells([]);
+    setHintCell(null);
     setView('game');
   }, [wordsData]);
 
   const useHint = () => {
-    if (score < 25) {
-      alert("Упайыңыз жетпейт! (Кеминде 25 упай керек)");
+    if (score < 20) {
+      alert("Кеминде 20 упай керек!");
       return;
     }
+    // Табыла элек сөздөрдү гана чыпкалоо
     const notFound = targetWords.filter(t => !foundWords.some(f => f.word === t.word));
+    
     if (notFound.length > 0) {
-      // Сөздүн баштапкы 3 тамгасын көрсөтүү
-      const hintPath = notFound[0].path.slice(0, 3);
-      setHintCells(hintPath);
-      setScore(prev => prev - 25);
-      setTimeout(() => setHintCells([]), 1800);
+      const firstCharCell = notFound[0].path[0]; // Табыла элек сөздүн 1-тамгасы
+      setHintCell(firstCharCell);
+      setScore(prev => prev - 20);
+      setTimeout(() => setHintCell(null), 1500);
     }
   };
 
@@ -151,7 +161,7 @@ const FilwordGame = ({ wordsData = [] }) => {
     if (isAlreadyFound || isAlreadySelected) return;
 
     const last = selectedCells[selectedCells.length - 1];
-    const isNeighbor = (last.c === c && Math.abs(last.r - r) === 1) || (last.r === r && Math.abs(last.c - c) === 1);
+    const isNeighbor = Math.abs(last.r - r) + Math.abs(last.c - c) === 1;
     if (isNeighbor) {
       setSelectedCells(prev => [...prev, { r, c }]);
       if (soundEnabled && navigator.vibrate) navigator.vibrate(5);
@@ -162,9 +172,15 @@ const FilwordGame = ({ wordsData = [] }) => {
     if (!isSelecting) return;
     setIsSelecting(false);
     const selectedText = selectedCells.map(cell => grid[cell.r][cell.c].char).join('');
-    const match = targetWords.find(t => t.word === selectedText && !foundWords.some(f => f.word === t.word));
+    
+    // Сөздү жана анын клеткаларынын санын текшерүү
+    const match = targetWords.find(t => 
+        t.word === selectedText && 
+        t.path.length === selectedCells.length &&
+        !foundWords.some(f => f.word === t.word)
+    );
 
-    if (match && match.word.length === selectedCells.length) {
+    if (match) {
       const color = COLORS[foundWords.length % COLORS.length];
       const newFound = [...foundWords, { ...match, cells: [...selectedCells], color }];
       setFoundWords(newFound);
@@ -195,9 +211,8 @@ const FilwordGame = ({ wordsData = [] }) => {
           <button className="neon-button" onClick={() => {
             const name = document.getElementById('userName').value;
             if (name) {
-              const newUser = { name };
-              setUser(newUser);
-              localStorage.setItem('filword_user', JSON.stringify(newUser));
+              setUser({ name });
+              localStorage.setItem('filword_user', JSON.stringify({ name }));
             }
           }}>БАШТОО</button>
         </div>
@@ -251,19 +266,14 @@ const FilwordGame = ({ wordsData = [] }) => {
                 <div className="avatar">{user.name[0].toUpperCase()}</div>
                 <h2 className="user-name">{user.name}</h2>
             </div>
-            
             <div className="settings-list">
                 <div className="setting-item">
                     <span>Музыка</span>
-                    <button className={`toggle ${musicEnabled ? 'on' : ''}`} onClick={() => setMusicEnabled(!musicEnabled)}>
-                        <div className="knob" />
-                    </button>
+                    <button className={`toggle ${musicEnabled ? 'on' : ''}`} onClick={() => setMusicEnabled(!musicEnabled)}><div className="knob" /></button>
                 </div>
                 <div className="setting-item">
                     <span>Үн (Вибрация)</span>
-                    <button className={`toggle ${soundEnabled ? 'on' : ''}`} onClick={() => setSoundEnabled(!soundEnabled)}>
-                        <div className="knob" />
-                    </button>
+                    <button className={`toggle ${soundEnabled ? 'on' : ''}`} onClick={() => setSoundEnabled(!soundEnabled)}><div className="knob" /></button>
                 </div>
                 <div className="setting-item logout" onClick={logout} style={{marginTop: '20px', color: '#ef5350', cursor: 'pointer'}}>
                     <span>Профилди тазалоо</span>
@@ -275,20 +285,12 @@ const FilwordGame = ({ wordsData = [] }) => {
 
         {view === 'calendar' && (
           <div className="calendar-container">
-            <h2 className="view-title">Күнүмдүк тапшырма</h2>
+            <h2 className="view-title">Күнүмдүк</h2>
             <div className="calendar-grid">
-              {[...Array(31)].map((_, i) => {
-                const day = i + 1;
-                const isCompleted = completedDays.includes(day);
-                const isToday = day === today;
-                const isLocked = day > today;
-                return (
-                  <div key={day} className={`day-cell ${isCompleted ? 'green' : isToday ? 'blue' : isLocked ? 'locked' : 'missed'}`}
-                    onClick={() => { if (isToday && !isCompleted) generateLevel(day + 100, true); }}>
-                    {day}
-                  </div>
-                );
-              })}
+              {[...Array(31)].map((_, i) => (
+                  <div key={i} className={`day-cell ${completedDays.includes(i+1) ? 'green' : (i+1 === today ? 'blue' : 'locked')}`}
+                    onClick={() => { if (i+1 === today) generateLevel(i + 100, true); }}>{i+1}</div>
+              ))}
             </div>
           </div>
         )}
@@ -299,7 +301,7 @@ const FilwordGame = ({ wordsData = [] }) => {
               {grid.map((row, r) => row.map((cell, c) => {
                 const isSel = selectedCells.some(s => s.r === r && s.c === c);
                 const fnd = foundWords.find(f => f.cells.some(s => s.r === r && s.c === c));
-                const isHint = hintCells.some(h => h.r === r && h.c === c);
+                const isHint = hintCell && hintCell.r === r && hintCell.c === c;
                 
                 return (
                   <div key={`${r}-${c}`} data-r={r} data-c={c} 
@@ -326,16 +328,10 @@ const FilwordGame = ({ wordsData = [] }) => {
         <div className="modal-overlay">
           <div className="glass-card">
             <h2 className="neon-text">ЖЕҢИШ!</h2>
-            <p>Сиз бардык сөздөрдү таптыңыз!</p>
             <button className="neon-button" onClick={() => {
-              if (!isDaily) {
                 const nextIdx = currentCatIndex + 1;
                 setCurrentCatIndex(nextIdx);
                 generateLevel(nextIdx);
-              } else {
-                setView('calendar');
-                setShowWinModal(false);
-              }
             }}>УЛАНТУУ</button>
           </div>
         </div>
@@ -344,7 +340,7 @@ const FilwordGame = ({ wordsData = [] }) => {
       {view !== 'game' && (
         <nav className="navigation">
           <ul>
-            {navItems.map((item, idx) => (
+            {navItems.map((item) => (
               <li key={item.id} className={view === item.id ? 'active' : ''} onClick={() => setView(item.id)}>
                 <a href="#" onClick={(e) => e.preventDefault()}>
                   <span className="icon"><ion-icon name={item.icon}></ion-icon></span>
@@ -361,4 +357,4 @@ const FilwordGame = ({ wordsData = [] }) => {
 };
 
 export default FilwordGame;
-    
+                        
