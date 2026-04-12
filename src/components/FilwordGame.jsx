@@ -10,7 +10,6 @@ const FilwordGame = ({ wordsData = [] }) => {
   const [score, setScore] = useState(() => parseInt(localStorage.getItem('filword_score')) || 0);
   const [completedDays, setCompletedDays] = useState(() => JSON.parse(localStorage.getItem('completed_days')) || []);
   
-  // Кошумча керектүү state'тер
   const [musicEnabled, setMusicEnabled] = useState(true);
   const [soundEnabled, setSoundEnabled] = useState(true);
 
@@ -22,7 +21,7 @@ const FilwordGame = ({ wordsData = [] }) => {
   const [isSelecting, setIsSelecting] = useState(false);
   const [showWinModal, setShowWinModal] = useState(false);
   const [isDaily, setIsDaily] = useState(false);
-  const [hintCell, setHintCell] = useState(null);
+  const [hintCells, setHintCells] = useState([]); // Бир эмес, бир нече клетканы көрсөтүү үчүн
 
   const gridRef = useRef(null);
   const gridSize = 6;
@@ -41,7 +40,6 @@ const FilwordGame = ({ wordsData = [] }) => {
     localStorage.setItem('completed_days', JSON.stringify(completedDays));
   }, [currentCatIndex, score, completedDays]);
 
-  // Профилди тазалоо функциясы
   const logout = () => {
     if(window.confirm("Профилди чын эле өчүрөсүзбү?")) {
         localStorage.clear();
@@ -50,9 +48,7 @@ const FilwordGame = ({ wordsData = [] }) => {
   };
 
   const generateLevel = useCallback((index, daily = false) => {
-    const category = wordsData[index % wordsData.length];
-    if (!category) return;
-
+    const category = wordsData[index % wordsData.length] || { category: "Жалпы", words: ["АЛМА", "КИЛИМ", "КИТЕП"] };
     setCategoryName(category.category || category.name || "Жалпы");
 
     let newGrid = Array(gridSize).fill(null).map(() => Array(gridSize).fill(null));
@@ -105,6 +101,7 @@ const FilwordGame = ({ wordsData = [] }) => {
 
     solve(0, 0, uniqueWords);
 
+    // Бош орундарды калтырбай толтуруу
     for (let r = 0; r < gridSize; r++) {
       for (let c = 0; c < gridSize; c++) {
         if (!newGrid[r][c]) {
@@ -121,21 +118,22 @@ const FilwordGame = ({ wordsData = [] }) => {
     setFoundWords([]);
     setShowWinModal(false);
     setIsDaily(daily);
-    setHintCell(null);
+    setHintCells([]);
     setView('game');
   }, [wordsData]);
 
   const useHint = () => {
-    if (score < 20) {
-      alert("Упайыңыз жетпейт! (Кеминде 20 упай керек)");
+    if (score < 25) {
+      alert("Упайыңыз жетпейт! (Кеминде 25 упай керек)");
       return;
     }
     const notFound = targetWords.filter(t => !foundWords.some(f => f.word === t.word));
     if (notFound.length > 0) {
-      const firstCharCell = notFound[0].path[0];
-      setHintCell(firstCharCell);
-      setScore(prev => prev - 20);
-      setTimeout(() => setHintCell(null), 1500);
+      // Сөздүн баштапкы 3 тамгасын көрсөтүү
+      const hintPath = notFound[0].path.slice(0, 3);
+      setHintCells(hintPath);
+      setScore(prev => prev - 25);
+      setTimeout(() => setHintCells([]), 1800);
     }
   };
 
@@ -301,7 +299,7 @@ const FilwordGame = ({ wordsData = [] }) => {
               {grid.map((row, r) => row.map((cell, c) => {
                 const isSel = selectedCells.some(s => s.r === r && s.c === c);
                 const fnd = foundWords.find(f => f.cells.some(s => s.r === r && s.c === c));
-                const isHint = hintCell && hintCell.r === r && hintCell.c === c;
+                const isHint = hintCells.some(h => h.r === r && h.c === c);
                 
                 return (
                   <div key={`${r}-${c}`} data-r={r} data-c={c} 
@@ -363,3 +361,4 @@ const FilwordGame = ({ wordsData = [] }) => {
 };
 
 export default FilwordGame;
+    
